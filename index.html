@@ -502,14 +502,54 @@
     background:rgba(255,255,255,.96);
     padding:10px 14px calc(10px + env(safe-area-inset-bottom));
   }
-  .run-controls-inner { width:min(732px,100%); margin:0 auto; display:grid; grid-template-columns:1fr 1fr 2fr 1fr; gap:8px; }
-  .run-controls .btn { padding:0 6px; min-height:56px; font-size:17px; }
+  .run-controls-inner { width:min(732px,100%); margin:0 auto; display:grid; grid-template-columns:1fr 1.3fr 2fr 1fr; gap:8px; }
+  .run-controls-inner [hidden] { display:none; }
+  .run-controls .btn { padding:0 6px; min-height:56px; font-size:17px; white-space:nowrap; }
 
   .diagram { margin:0 0 14px; }
   .diagram svg { display:block; width:100%; height:auto; max-width:520px; }
   .diagram-legend { display:flex; flex-wrap:wrap; gap:6px 14px; margin-top:6px; font-size:12px; font-weight:600; color:var(--muted); }
   .diagram-legend span { display:inline-flex; align-items:center; gap:5px; }
   .diagram-legend svg { width:22px; height:12px; }
+
+  .sheet-top { position:relative; }
+  .sheet-close {
+    position:absolute; right:0; top:-4px;
+    border:0; background:transparent;
+    color:var(--accent); font-weight:800; font-size:16px;
+    padding:4px 2px;
+  }
+  .plan-row.is-live { border-color:var(--accent); box-shadow:0 0 0 2px rgba(29,111,66,.15); }
+  .plan-time { margin-top:6px; font-size:12px; font-weight:800; color:var(--accent); }
+  .plan-time.over { color:var(--warn); }
+  .plan-time.muted { color:var(--muted); font-weight:700; }
+  .plan-time:empty { display:none; }
+  .note-btn {
+    width:auto !important; padding:0 9px;
+    font-size:13px; font-weight:800 !important;
+  }
+  .review-head { margin:10px 0 4px; }
+  .run-live {
+    width:min(732px,calc(100% - 28px));
+    margin:10px auto 0;
+    display:flex; justify-content:space-between; align-items:center; gap:8px;
+    border:1px solid #b8d8c4; background:var(--accent-soft); color:var(--accent);
+    border-radius:12px; padding:10px 12px;
+    font-weight:800; font-size:14px; text-align:left;
+  }
+  .run-live.over { background:#fdecea; border-color:#f3b8b2; color:var(--warn); }
+  .run-live[hidden] { display:none; }
+  .run-next { cursor:pointer; }
+  .run-note-preview { margin-top:10px; padding:10px 12px; border-radius:10px; background:#fffbea; border:1px solid #f1e1a6; font-size:14px; line-height:1.4; white-space:pre-wrap; }
+  .run-note-preview[hidden] { display:none; }
+  .choice textarea {
+    width:100%; min-height:140px;
+    border:1px solid var(--line); border-radius:12px;
+    padding:10px 12px; font-size:16px; line-height:1.4;
+    resize:vertical; outline:none;
+  }
+  .choice textarea:focus { border-color:#9ab8a7; }
+  .choice textarea[readonly] { background:#f7f8fa; }
 
   .choice {
     border:0;
@@ -594,7 +634,10 @@
 
 <div id="practicePanel" class="sheet" popover>
   <div class="sheet-inner">
-    <div class="sheet-handle"></div>
+    <div class="sheet-top">
+      <div class="sheet-handle"></div>
+      <button class="sheet-close" type="button" popovertarget="practicePanel" popovertargetaction="hide">Done</button>
+    </div>
     <div class="tabs" role="tablist">
       <button type="button" data-tab="plan">Plan</button>
       <button type="button" data-tab="templates">Templates</button>
@@ -610,7 +653,7 @@
       </div>
       <div id="planList" class="plan-list"></div>
       <div id="emptyPlan" class="empty-plan">No drills yet. Open a drill and tap <b>Add to practice</b>, or pick one of the <b>Templates</b>.</div>
-      <div class="plan-summary"><span>Total planned time</span><span id="totalMinutes">0 min</span></div>
+      <div class="plan-summary"><span id="totalLabel">Total planned time</span><span id="totalMinutes">0 min</span></div>
       <button id="startRun" class="btn btn-primary start-btn" type="button">▶ Start practice</button>
       <div class="row-actions">
         <button id="addBreak" class="btn btn-small" type="button">💧 Add water break</button>
@@ -645,9 +688,18 @@
       <div id="historyList" class="card-list"></div>
     </section>
 
-    <div class="sheet-actions" style="grid-template-columns:1fr">
-      <button class="btn" type="button" popovertarget="practicePanel" popovertargetaction="hide">Done</button>
-    </div>
+    <section class="tab-panel" data-panel="review" hidden>
+      <button id="reviewBack" class="btn btn-small" type="button">‹ History</button>
+      <div class="review-head">
+        <div id="reviewTitle" class="sheet-title"></div>
+        <div id="reviewDate" class="sheet-note" style="margin:2px 0 0"></div>
+      </div>
+      <p class="sheet-note">Under each drill is how long it actually ran last time. Adjust the minutes, then use it as your plan.</p>
+      <div id="reviewList" class="plan-list"></div>
+      <div class="plan-summary"><span id="reviewTotalLabel">Planned</span><span id="reviewTotal"></span></div>
+      <button id="reviewUse" class="btn btn-primary start-btn" type="button">Use as current plan</button>
+    </section>
+    <div style="height:8px"></div>
   </div>
 </div>
 
@@ -658,37 +710,50 @@
     <button id="runClose" class="run-close" type="button">Minimize</button>
   </div>
   <div class="run-progress"><div id="runProgress"></div></div>
-  <div class="run-body">
+  <button id="runLive" class="run-live" type="button" hidden></button>
+  <div id="runBody" class="run-body">
     <div id="runTitle" class="run-title"></div>
     <div id="runSub" class="run-sub"></div>
     <div id="runClock" class="run-clock">0:00</div>
     <div id="runClockNote" class="run-clock-note"></div>
-    <div id="runNext" class="run-next"></div>
-    <div id="runDetail" class="run-detail"></div>
     <div class="row-actions three" style="margin-top:14px">
       <button id="runSubMin" class="btn btn-small" type="button" aria-label="One minute less">− 1 min</button>
       <button id="runAddMin" class="btn btn-small" type="button" aria-label="One minute more">+ 1 min</button>
-      <button id="runEnd" class="btn btn-small" type="button">End practice</button>
+      <button id="runNotes" class="btn btn-small" type="button">📝 Notes</button>
     </div>
+    <div id="runNotePreview" class="run-note-preview" hidden></div>
+    <div id="runNext" class="run-next"></div>
+    <div id="runDetail" class="run-detail"></div>
+    <button id="runEnd" class="btn btn-small" type="button" style="width:100%;margin-top:14px">End practice</button>
   </div>
   <div class="run-controls">
     <div class="run-controls-inner">
-      <button id="runPrev" class="btn" type="button" aria-label="Previous drill">◀</button>
-      <button id="runRestart" class="btn" type="button" aria-label="Restart timer">↺</button>
-      <button id="runPause" class="btn btn-primary" type="button">Pause</button>
-      <button id="runNextBtn" class="btn" type="button" aria-label="Next drill">▶</button>
+      <button id="runPrev" class="btn" type="button" aria-label="Previous activity">◀</button>
+      <button id="runMid" class="btn" type="button"></button>
+      <button id="runMain" class="btn btn-primary" type="button"></button>
+      <button id="runNextBtn" class="btn" type="button" aria-label="Next activity">▶</button>
     </div>
   </div>
 </div>
 
 <dialog id="endDialog" class="choice">
-  <form method="dialog">
+  <div>
     <h2 id="endTitle">End practice?</h2>
-    <p id="endText">Save it to history so templates and “Ran 5d ago” labels know you used these drills.</p>
-    <button class="btn btn-primary" value="save">Save to history</button>
-    <button class="btn btn-danger" value="discard">End without saving</button>
-    <button class="btn" value="cancel">Keep going</button>
-  </form>
+    <p id="endText">Saving keeps the time spent and your notes so you can review them later.</p>
+    <button class="btn btn-primary" type="button" data-v="save">Save to history</button>
+    <button class="btn btn-danger" type="button" data-v="discard">End without saving</button>
+    <button class="btn" type="button" data-v="cancel">Keep going</button>
+  </div>
+</dialog>
+
+<dialog id="noteDialog" class="choice">
+  <div>
+    <h2 id="noteTitle">Notes</h2>
+    <p id="noteSub"></p>
+    <textarea id="noteText" placeholder="What worked? What would you change next time?"></textarea>
+    <button id="noteSave" class="btn btn-primary" type="button" data-v="save">Save note</button>
+    <button class="btn" type="button" data-v="cancel">Close</button>
+  </div>
 </dialog>
 
 <div id="toast" class="toast" role="status" aria-live="polite"></div>
@@ -712,20 +777,26 @@
   const write = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch (_) {} };
 
   const titleToId = new Map(DRILLS.map(d => [d.title, d.id]));
-  const defaults = { favorites: [], plan: { name: '', items: [], template: null }, saved: [], history: [], age: 'u6', match: 'all', filters: [], run: null };
+  const defaults = { favorites: [], plan: { name: '', items: [], template: null }, saved: [], history: [], age: 'u6', match: 'all', filters: [], session: null };
   let S = Object.assign({}, defaults, read(KEY, null) || {});
   if (!read(KEY, null)) {
     // One-time migration from the first version of the page.
     S.favorites = (read('soccerFavorites', []) || []).map(t => titleToId.get(t)).filter(Boolean);
     S.plan.items = (read('soccerPracticePlan', []) || []).map(t => titleToId.get(t)).filter(Boolean)
-      .map(id => ({ id, minutes: byId.get(id).minutes }));
+      .map(id => ({ key: id, id, minutes: byId.get(id).minutes }));
   }
   const validItem = i => i && (i.id === 'break' || byId.has(i.id));
-  S.plan.items = (S.plan.items || []).filter(validItem);
+  const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+  const withKeys = items => items.filter(validItem).map(i => ({ key: uid(), id: i.id, minutes: i.minutes }));
+  S.plan.items = (S.plan.items || []).filter(validItem).map(i => i.key ? i : { ...i, key: uid() });
+  delete S.run;
+  if (S.session) {
+    const keys = new Set(S.plan.items.map(i => i.key));
+    if (!keys.size) S.session = null;
+    else if (S.session.active && !keys.has(S.session.active)) { S.session.active = null; S.session.running = false; }
+  }
   S.favorites = S.favorites.filter(id => byId.has(id));
   const save = () => write(KEY, S);
-
-  const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
   const toast = (msg) => {
     const t = $('toast');
     t.textContent = msg;
@@ -857,11 +928,10 @@
       content.append(actions, ...detailNodes(d));
 
       addBtn.addEventListener('click', () => {
-        const i = S.plan.items.findIndex(x => x.id === d.id);
-        if (i >= 0) S.plan.items.splice(i, 1);
-        else S.plan.items.push({ id: d.id, minutes: d.minutes });
-        planChanged();
-        toast(i >= 0 ? 'Removed from practice' : `Added · ${totalOf(S.plan.items)} min total`);
+        const existing = S.plan.items.find(x => x.id === d.id);
+        if (existing) { if (!removeItem(existing.key)) return; }
+        else { S.plan.items.push({ key: uid(), id: d.id, minutes: d.minutes }); planChanged(); }
+        toast(existing ? 'Removed from practice' : S.session ? 'Added to the practice in progress' : `Added · ${totalOf(S.plan.items)} min total`);
       });
       favBtn.addEventListener('click', () => {
         const i = S.favorites.indexOf(d.id);
@@ -1050,66 +1120,129 @@
 
   /* ---------- Practice panel ---------- */
   const practicePanel = $('practicePanel');
+  const panelOpen = () => { try { return practicePanel.matches(':popover-open'); } catch (_) { return false; } };
   let tab = 'plan';
+  let review = null;
   function setTab(t) {
     tab = t;
-    document.querySelectorAll('.tabs button').forEach(b => b.classList.toggle('active', b.dataset.tab === t));
+    const shown = t === 'review' ? 'history' : t;
+    document.querySelectorAll('.tabs button').forEach(b => b.classList.toggle('active', b.dataset.tab === shown));
     document.querySelectorAll('.tab-panel').forEach(p => { p.hidden = p.dataset.panel !== t; });
+    if (t === 'plan') renderPlan();
     if (t === 'templates') renderTemplates();
     if (t === 'saved') renderSaved();
     if (t === 'history') renderHistory();
+    if (t === 'review') renderReview();
   }
   document.querySelectorAll('.tabs button').forEach(b => b.addEventListener('click', () => setTab(b.dataset.tab)));
-  $('openPractice').addEventListener('click', () => { renderPlan(); setTab('plan'); practicePanel.showPopover(); });
+  $('openPractice').addEventListener('click', () => { setTab('plan'); practicePanel.showPopover(); });
 
   function planChanged() {
     save();
     renderPlan();
     refreshCards();
+    if (!runEl.hidden) renderRun(true);
+    updateResumeBar();
+  }
+
+  function removeItem(key) {
+    const i = S.plan.items.findIndex(x => x.key === key);
+    if (i < 0) return false;
+    const it = S.plan.items[i], X = S.session;
+    if (X) {
+      const tracked = elapsedOf(key) > 0 || X.notes[key];
+      if (tracked && !confirm(`Remove “${itemName(it)}”? Its time${X.notes[key] ? ' and notes' : ''} from this practice will be lost.`)) return false;
+      if (X.active === key) { X.active = null; X.running = false; }
+      delete X.times[key]; delete X.notes[key];
+      if (X.view === key) X.view = (S.plan.items[i + 1] || S.plan.items[i - 1] || {}).key || null;
+    }
+    S.plan.items.splice(i, 1);
+    if (!S.plan.items.length) S.session = null;
+    planChanged();
+    return true;
+  }
+
+  function stepper(it, onChange) {
+    const mins = el('div', 'plan-mins');
+    const minus = el('button', null, '−'); minus.type = 'button'; minus.setAttribute('aria-label', 'Less time');
+    const val = el('span', null, `${it.minutes} min`);
+    const plus = el('button', null, '+'); plus.type = 'button'; plus.setAttribute('aria-label', 'More time');
+    minus.addEventListener('click', () => { it.minutes = Math.max(1, it.minutes - 1); onChange(); });
+    plus.addEventListener('click', () => { it.minutes = Math.min(60, it.minutes + 1); onChange(); });
+    mins.append(minus, val, plus);
+    return mins;
+  }
+
+  function timeLine(ms, planned, live) {
+    if (!live && !ms) return ['', ''];
+    const over = ms > planned;
+    const tail = over ? ` · +${fmt(ms - planned)} over` : live ? ` · ${fmt(planned - ms)} left` : '';
+    const lead = live ? (S.session.running ? '▶ Running' : '⏸ Paused') : '✓ Done';
+    return [`${lead} · ${fmt(ms)} used${tail}`, over ? 'over' : ''];
+  }
+
+  const planTimeEls = new Map();
+  function updatePlanTimes() {
+    const X = S.session;
+    let used = 0;
+    S.plan.items.forEach(it => {
+      const ms = X ? elapsedOf(it.key) : 0;
+      used += ms;
+      const node = planTimeEls.get(it.key);
+      if (!node) return;
+      const live = !!X && X.active === it.key;
+      const [text, cls] = X ? timeLine(ms, it.minutes * 60000, live) : ['', ''];
+      node.textContent = text;
+      node.className = 'plan-time ' + cls;
+      node.parentElement.parentElement.classList.toggle('is-live', live);
+    });
+    const total = totalOf(S.plan.items);
+    $('totalLabel').textContent = X && used ? 'Time used' : 'Total planned time';
+    $('totalMinutes').textContent = X && used ? `${fmt(used)} of ${total} min` : `${total} min`;
   }
 
   function renderPlan() {
     const list = $('planList');
     list.innerHTML = '';
+    planTimeEls.clear();
     const items = S.plan.items;
     items.forEach((it, index) => {
       const row = el('div', 'plan-row' + (it.id === 'break' ? ' is-break' : ''));
       const left = el('div');
-      left.append(el('div', 'plan-name', itemName(it)));
-      const mins = el('div', 'plan-mins');
-      const minus = el('button', null, '−'); minus.type = 'button'; minus.setAttribute('aria-label', 'Less time');
-      const val = el('span', null, `${it.minutes} min`);
-      const plus = el('button', null, '+'); plus.type = 'button'; plus.setAttribute('aria-label', 'More time');
-      minus.addEventListener('click', () => { it.minutes = Math.max(1, it.minutes - 1); planChanged(); });
-      plus.addEventListener('click', () => { it.minutes = Math.min(60, it.minutes + 1); planChanged(); });
-      mins.append(minus, val, plus);
-      left.append(mins);
+      left.append(el('div', 'plan-name', itemName(it)), stepper(it, planChanged));
+      const time = el('div', 'plan-time');
+      left.append(time);
+      planTimeEls.set(it.key, time);
 
       const controls = el('div', 'plan-controls');
       const mk = (txt, label, fn, dis) => { const b = el('button', null, txt); b.type = 'button'; b.setAttribute('aria-label', label); b.disabled = !!dis; b.addEventListener('click', fn); return b; };
       controls.append(
         mk('↑', 'Move up', () => { [items[index - 1], items[index]] = [items[index], items[index - 1]]; planChanged(); }, index === 0),
         mk('↓', 'Move down', () => { [items[index + 1], items[index]] = [items[index], items[index + 1]]; planChanged(); }, index === items.length - 1),
-        mk('×', 'Remove', () => { items.splice(index, 1); planChanged(); })
+        mk('×', 'Remove', () => removeItem(it.key))
       );
       row.append(left, controls);
       list.append(row);
     });
     const drillCount = items.filter(i => i.id !== 'break').length;
     $('emptyPlan').hidden = items.length > 0;
-    $('totalMinutes').textContent = `${totalOf(items)} min`;
     $('practiceCount').textContent = drillCount || '';
     $('startRun').disabled = !items.length;
+    $('startRun').textContent = S.session ? '▶ Back to practice' : '▶ Start practice';
+    $('markDone').textContent = S.session ? 'End practice' : '✓ Mark run';
     $('planName').value = S.plan.name || '';
     const tpl = S.plan.template && TEMPLATES.find(t => t.id === S.plan.template.id);
     $('planSource').hidden = !tpl;
     if (tpl) $('planSourceText').textContent = `From template: ${tpl.name}${tpl.age ? '' : ' · ' + S.plan.template.age.toUpperCase()}`;
+    updatePlanTimes();
   }
 
   $('planName').addEventListener('input', e => { S.plan.name = e.target.value; save(); });
-  $('addBreak').addEventListener('click', () => { S.plan.items.push({ id: 'break', minutes: 2 }); planChanged(); });
+  $('addBreak').addEventListener('click', () => { S.plan.items.push({ key: uid(), id: 'break', minutes: 2 }); planChanged(); });
   $('clearPlan').addEventListener('click', () => {
-    if (!S.plan.items.length || confirm('Clear the current plan?')) { S.plan = { name: '', items: [], template: null }; planChanged(); }
+    if (!S.plan.items.length) return;
+    const msg = S.session ? 'Clear the plan? This also ends the practice in progress without saving.' : 'Clear the current plan?';
+    if (confirm(msg)) { S.plan = { name: '', items: [], template: null }; S.session = null; planChanged(); }
   });
 
   $('savePlan').addEventListener('click', () => {
@@ -1123,30 +1256,34 @@
     }
     const existing = S.saved.find(p => p.name.toLowerCase() === name.toLowerCase());
     if (existing && !confirm(`Replace the saved plan “${existing.name}”?`)) return;
-    const copy = { id: existing ? existing.id : uid(), name, items: S.plan.items.map(i => ({ ...i })), updated: new Date().toISOString() };
+    const copy = { id: existing ? existing.id : uid(), name, items: S.plan.items.map(({ id, minutes }) => ({ id, minutes })), updated: new Date().toISOString() };
     S.saved = [copy, ...S.saved.filter(p => p !== existing)];
     planChanged();
     toast(`Saved “${name}”`);
   });
 
   function loadItems(name, items, template) {
-    if (S.plan.items.length && !confirm('Replace the current plan?')) return false;
-    S.plan = { name: name || '', items: items.filter(validItem).map(i => ({ ...i })), template: template || null };
+    if (S.session) {
+      if (!confirm('A practice is in progress. End it without saving and load this plan?')) return false;
+    } else if (S.plan.items.length && !confirm('Replace the current plan?')) return false;
+    S.session = null;
+    S.plan = { name: name || '', items: withKeys(items), template: template || null };
     planChanged();
     setTab('plan');
     return true;
   }
 
   function addToHistory(name, items) {
-    S.history.unshift({ id: uid(), date: new Date().toISOString(), name: name || 'Practice', items: items.map(i => ({ id: i.id, minutes: i.minutes })) });
+    S.history.unshift({ id: uid(), date: new Date().toISOString(), name: name || 'Practice', items });
     S.history = S.history.slice(0, 100);
     save();
     refreshCards();
     if (filters.has('fresh')) applyFilters();
   }
   $('markDone').addEventListener('click', () => {
+    if (S.session) return askEnd(false);
     if (!S.plan.items.length) return toast('Nothing in the plan yet');
-    addToHistory(S.plan.name, S.plan.items);
+    addToHistory(S.plan.name, S.plan.items.map(({ id, minutes }) => ({ id, minutes })));
     toast('Saved to history');
   });
 
@@ -1173,13 +1310,7 @@
     const name = decodeURIComponent(m[1]);
     const items = m[2].split(',').map(s => { const [id, min] = s.split('.'); return { id, minutes: Math.max(1, Math.min(60, Number(min) || (byId.get(id)?.minutes ?? 2))) }; }).filter(validItem);
     if (!items.length) return;
-    if (!S.plan.items.length || confirm(`Load shared practice “${name || 'Practice'}”? It will replace your current plan.`)) {
-      S.plan = { name, items, template: null };
-      planChanged();
-      renderPlan();
-      practicePanel.showPopover();
-      toast('Shared plan loaded');
-    }
+    if (loadItems(name, items)) { practicePanel.showPopover(); toast(`Loaded shared plan “${name || 'Practice'}”`); }
   }
 
   function renderSaved() {
@@ -1190,7 +1321,7 @@
       const c = el('div', 'item-card');
       const t = el('div', 'item-title', p.name);
       t.append(el('small', null, `${totalOf(p.items)} min`));
-      c.append(t, el('div', 'item-desc', p.items.map(itemName).join(' · ')));
+      c.append(t, el('div', 'item-desc', p.items.filter(validItem).map(itemName).join(' · ')));
       const a = el('div', 'item-actions');
       const load = el('button', 'btn btn-small btn-soft', 'Load'); load.type = 'button';
       load.addEventListener('click', () => { if (loadItems(p.name, p.items)) toast(`Loaded “${p.name}”`); });
@@ -1202,6 +1333,7 @@
     });
   }
 
+  const tracked = h => h.items.some(i => typeof i.elapsed === 'number');
   function renderHistory() {
     const list = $('historyList');
     list.innerHTML = '';
@@ -1211,16 +1343,91 @@
       const n = daysAgo(h.date);
       const t = el('div', 'item-title', h.name);
       t.append(el('small', null, `${fmtDate(h.date)}${n <= 1 ? '' : ` · ${n}d ago`}`));
-      c.append(t, el('div', 'item-desc', h.items.filter(validItem).map(itemName).join(' · ') + ` · ${totalOf(h.items)} min`));
+      const spent = tracked(h) ? ` · ${fmt(h.items.reduce((s, i) => s + (i.elapsed || 0), 0))} spent` : '';
+      const notes = h.items.filter(i => i.note).length;
+      c.append(t, el('div', 'item-desc', h.items.filter(validItem).map(itemName).join(' · ') +
+        ` · ${totalOf(h.items)} min planned${spent}${notes ? ` · 📝 ${notes}` : ''}`));
       const a = el('div', 'item-actions');
-      const again = el('button', 'btn btn-small btn-soft', 'Use again'); again.type = 'button';
-      again.addEventListener('click', () => { if (loadItems(h.name, h.items)) toast('Loaded into plan'); });
+      const rev = el('button', 'btn btn-small btn-soft', 'Review'); rev.type = 'button';
+      rev.addEventListener('click', () => {
+        review = { entry: h, items: h.items.filter(validItem).map(i => ({ ...i, planned: i.minutes })) };
+        setTab('review');
+        practicePanel.scrollTop = 0;
+      });
       const del = el('button', 'btn btn-small', 'Delete'); del.type = 'button';
       del.addEventListener('click', () => { if (confirm('Remove this practice from history?')) { S.history = S.history.filter(x => x !== h); save(); refreshCards(); renderHistory(); } });
-      a.append(again, del);
+      a.append(rev, del);
       c.append(a);
       list.append(c);
     });
+  }
+
+  function renderReview() {
+    if (!review) return setTab('history');
+    const { entry, items } = review;
+    const n = daysAgo(entry.date);
+    $('reviewTitle').textContent = entry.name;
+    $('reviewDate').textContent = fmtDate(entry.date) + (n > 1 ? ` · ${n} days ago` : '');
+    const list = $('reviewList');
+    list.innerHTML = '';
+    items.forEach(it => {
+      const row = el('div', 'plan-row' + (it.id === 'break' ? ' is-break' : ''));
+      const left = el('div');
+      left.append(el('div', 'plan-name', itemName(it)), stepper(it, renderReview));
+      const planned = it.planned * 60000;
+      let text = `Last time: planned ${it.planned} min`, cls = 'muted';
+      if (typeof it.elapsed === 'number') {
+        if (!it.elapsed) text = `Last time: skipped (planned ${it.planned} min)`;
+        else {
+          const d = it.elapsed - planned;
+          text = `Last time: ${fmt(it.elapsed)} of ${it.planned} min` + (Math.abs(d) >= 30000 ? (d > 0 ? ` · +${fmt(d)} over` : ` · ${fmt(-d)} under`) : '');
+          cls = d > 30000 ? 'over' : '';
+        }
+      } else text += ' · time not tracked';
+      left.append(el('div', 'plan-time ' + cls, text));
+      row.append(left);
+      if (it.note) {
+        const b = el('button', 'btn btn-small note-btn', '📝 Notes'); b.type = 'button';
+        b.addEventListener('click', () => openNote(itemName(it), `Notes from ${fmtDate(entry.date)}`, it.note, null));
+        row.append(b);
+      }
+      list.append(row);
+    });
+    const spent = items.reduce((s, i) => s + (i.elapsed || 0), 0);
+    $('reviewTotalLabel').textContent = 'Planned';
+    $('reviewTotal').textContent = `${totalOf(items)} min` + (tracked(entry) ? ` · last time ${fmt(spent)}` : '');
+  }
+  $('reviewBack').addEventListener('click', () => setTab('history'));
+  $('reviewUse').addEventListener('click', () => {
+    if (review && loadItems(review.entry.name, review.items)) toast('Loaded into plan');
+  });
+
+  /* ---------- Dialogs ---------- */
+  const choices = new WeakMap();
+  function choose(dlg, fn) { choices.set(dlg, fn); dlg.showModal(); }
+  document.querySelectorAll('dialog.choice').forEach(dlg => {
+    dlg.addEventListener('click', e => {
+      const b = e.target.closest('button[data-v]');
+      if (!b) return;
+      const fn = choices.get(dlg);
+      choices.delete(dlg);
+      dlg.close();
+      if (fn) fn(b.dataset.v);
+    });
+    dlg.addEventListener('cancel', () => choices.delete(dlg));
+  });
+
+  /* ---------- Notes ---------- */
+  function openNote(title, sub, text, onSave) {
+    const dlg = $('noteDialog');
+    $('noteTitle').textContent = title;
+    $('noteSub').textContent = sub;
+    const ta = $('noteText');
+    ta.value = text || '';
+    ta.readOnly = !onSave;
+    $('noteSave').hidden = !onSave;
+    choose(dlg, v => { if (onSave && v === 'save') onSave(ta.value.trim()); });
+    if (onSave && !ta.value) setTimeout(() => ta.focus(), 50);
   }
 
   /* ---------- Templates ---------- */
@@ -1322,19 +1529,26 @@
     const src = S.plan.template;
     const t = src && TEMPLATES.find(x => x.id === src.id);
     if (!t) return;
-    S.plan.items = buildTemplate(t, src.age);
+    if (S.session && !confirm('Shuffle the plan? This ends the practice in progress without saving.')) return;
+    S.session = null;
+    S.plan.items = withKeys(buildTemplate(t, src.age));
     planChanged();
     toast('Shuffled');
   });
 
-  /* ---------- Run mode (timer) ---------- */
+  /* ---------- Practice mode (timer) ---------- */
   const runEl = $('run');
-  let tick = null, wakeLock = null, audio = null;
+  let wakeLock = null, audio = null;
 
-  const segElapsed = r => r.acc + (r.paused ? 0 : Date.now() - r.segStart);
   const fmt = ms => {
     const s = Math.max(0, Math.round(ms / 1000));
     return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
+  };
+  const findItem = key => S.plan.items.find(i => i.key === key);
+  const elapsedOf = key => {
+    const X = S.session;
+    if (!X) return 0;
+    return (X.times[key] || 0) + (X.active === key && X.running ? Date.now() - X.segStart : 0);
   };
 
   function beep() {
@@ -1368,159 +1582,234 @@
     } catch (_) {}
   }
 
-  function startRun() {
+  function openRun() {
     if (!S.plan.items.length) return;
     unlockAudio();
-    if (S.run && !confirm('A practice is already in progress. Start over with this plan?')) return showRun();
-    S.run = {
-      name: S.plan.name || 'Practice',
-      items: S.plan.items.map(i => ({ id: i.id, minutes: i.minutes })),
-      index: 0, acc: 0, segStart: Date.now(), paused: false, alarmed: false,
-      startedAt: Date.now(), actual: []
-    };
+    if (!S.session) S.session = { firstStart: null, active: null, running: false, segStart: 0, times: {}, alarmed: {}, notes: {}, view: null };
+    const X = S.session;
+    if (!findItem(X.view)) X.view = X.active || S.plan.items[0].key;
     save();
-    practicePanel.hidePopover();
-    showRun();
-  }
-
-  function showRun() {
-    if (!S.run) return;
-    unlockAudio();
+    if (panelOpen()) practicePanel.hidePopover();
     runEl.hidden = false;
     document.body.classList.add('locked');
     renderRun(true);
-    clearInterval(tick);
-    tick = setInterval(() => renderRun(false), 250);
     keepAwake(true);
-    $('resumeBar').hidden = true;
+    updateResumeBar();
   }
 
   function hideRun() {
     runEl.hidden = true;
     document.body.classList.remove('locked');
-    clearInterval(tick);
     keepAwake(false);
     updateResumeBar();
+    if (panelOpen()) renderPlan();
+  }
+
+  function stopActive() {
+    const X = S.session;
+    if (X.active && X.running) { X.times[X.active] = elapsedOf(X.active); X.running = false; }
+  }
+  function startItem(key) {
+    const X = S.session;
+    if (X.active && X.running && X.active !== key &&
+        !confirm(`End “${itemName(findItem(X.active))}” and start “${itemName(findItem(key))}”?`)) return;
+    unlockAudio();
+    stopActive();
+    X.active = key; X.running = true; X.segStart = Date.now();
+    X.firstStart = X.firstStart || Date.now();
+    if (elapsedOf(key) < findItem(key).minutes * 60000) X.alarmed[key] = false;
+    save(); renderRun(true); updateResumeBar();
+  }
+  function togglePause() {
+    const X = S.session;
+    unlockAudio();
+    if (X.running) stopActive();
+    else { X.running = true; X.segStart = Date.now(); }
+    save(); renderRun(true); updateResumeBar();
+  }
+  function restartItem(key) {
+    const X = S.session;
+    if (elapsedOf(key) > 10000 && !confirm(`Reset the timer for “${itemName(findItem(key))}” back to the start?`)) return;
+    X.times[key] = 0;
+    if (X.active === key) X.segStart = Date.now();
+    X.alarmed[key] = false;
+    save(); renderRun(true);
+  }
+  function viewDelta(d) {
+    const X = S.session, items = S.plan.items;
+    const n = items.findIndex(i => i.key === X.view) + d;
+    if (n < 0 || n >= items.length) return;
+    X.view = items[n].key;
+    save(); renderRun(true);
+    $('runBody').scrollTop = 0;
   }
 
   function updateResumeBar() {
-    const r = S.run;
-    $('resumeBar').hidden = !r || !runEl.hidden;
-    if (r) $('resumeText').textContent = `▶ ${itemName(r.items[r.index])}${r.paused ? ' (paused)' : ''}`;
+    const X = S.session;
+    $('resumeBar').hidden = !X || !runEl.hidden;
+    if (!X) return;
+    const it = X.active && findItem(X.active);
+    if (!it) { $('resumeText').textContent = '▶ Practice open — nothing running'; return; }
+    const left = it.minutes * 60000 - elapsedOf(it.key);
+    $('resumeText').textContent = `${X.running ? '▶' : '⏸'} ${itemName(it)} · ${left < 0 ? '+' + fmt(-left) + ' over' : fmt(left) + ' left'}`;
   }
 
   function renderRun(full) {
-    const r = S.run;
-    if (!r) return;
-    const it = r.items[r.index];
-    const planned = it.minutes * 60000;
-    const el_ = segElapsed(r);
-    const left = planned - el_;
-    const over = left < 0;
-
-    if (over && !r.alarmed) { r.alarmed = true; save(); beep(); }
+    const X = S.session;
+    if (!X) return;
+    const items = S.plan.items;
+    let it = findItem(X.view);
+    if (!it) {
+      if (!items.length) { S.session = null; save(); hideRun(); return; }
+      it = items[0]; X.view = it.key;
+    }
+    const idx = items.indexOf(it);
+    const isActive = X.active === it.key;
+    const live = isActive && X.running;
+    const ms = elapsedOf(it.key), planned = it.minutes * 60000, left = planned - ms, over = left < 0;
 
     const clock = $('runClock');
     clock.textContent = over ? '+' + fmt(-left) : fmt(left);
     clock.classList.toggle('over', over);
-    clock.classList.toggle('paused', r.paused);
+    clock.classList.toggle('paused', !live);
     const note = $('runClockNote');
-    note.textContent = r.paused ? 'Paused' : over ? "Time's up — tap ▶ for the next one" : `${it.minutes} min planned`;
-    note.classList.toggle('over', over && !r.paused);
-    $('runPause').textContent = r.paused ? 'Resume' : 'Pause';
+    note.textContent = isActive
+      ? (!X.running ? `Paused · ${fmt(ms)} used` : over ? "Time's up — go to the next one when you're ready" : `${it.minutes} min planned`)
+      : ms ? `Stopped · ${fmt(ms)} used of ${it.minutes} min` : `Not started · ${it.minutes} min planned`;
+    note.classList.toggle('over', over && live);
 
-    const doneMs = r.items.slice(0, r.index).reduce((s, i) => s + i.minutes * 60000, 0) + Math.min(el_, planned);
-    const totalMs = totalOf(r.items) * 60000;
-    $('runProgress').style.width = `${Math.min(100, doneMs / totalMs * 100)}%`;
-    $('runTotal').textContent = `${fmt(Date.now() - r.startedAt)} elapsed`;
+    const cur = X.active && !isActive && findItem(X.active);
+    const liveBar = $('runLive');
+    liveBar.hidden = !cur;
+    if (cur) {
+      const l = cur.minutes * 60000 - elapsedOf(cur.key);
+      liveBar.textContent = '';
+      liveBar.append(el('span', null, `${X.running ? '▶' : '⏸'} ${itemName(cur)} · ${l < 0 ? '+' + fmt(-l) + ' over' : fmt(l) + ' left'}`), el('span', null, 'Return ↩'));
+      liveBar.classList.toggle('over', l < 0);
+    }
+
+    const doneMs = items.reduce((s, i) => s + Math.min(elapsedOf(i.key), i.minutes * 60000), 0);
+    $('runProgress').style.width = `${Math.min(100, doneMs / (totalOf(items) * 60000) * 100)}%`;
+    $('runTotal').textContent = X.firstStart ? `${fmt(items.reduce((s, i) => s + elapsedOf(i.key), 0))} total` : 'Not started';
 
     if (!full) return;
-    $('runStep').textContent = `${r.index + 1} of ${r.items.length}`;
+    $('runStep').textContent = `${idx + 1} of ${items.length}`;
     $('runTitle').textContent = itemName(it);
     const d = byId.get(it.id);
     $('runSub').textContent = d ? d.meta.join(' · ') : 'Drink, catch your breath, set up the next game.';
-    const nx = r.items[r.index + 1];
+
+    const nx = items[idx + 1];
     const next = $('runNext');
     next.innerHTML = '';
-    if (nx) { next.append('Next up: '); next.append(el('b', null, itemName(nx))); next.append(` · ${nx.minutes} min`); }
+    if (nx) { next.append('Up next: '); next.append(el('b', null, itemName(nx))); next.append(` · ${nx.minutes} min ›`); }
     else next.append('Last one — finish strong! 🎉');
+
+    const noteText = X.notes[it.key] || '';
+    $('runNotes').textContent = noteText ? '📝 Edit notes' : '📝 Notes';
+    $('runNotePreview').hidden = !noteText;
+    $('runNotePreview').textContent = noteText;
+
     const detail = $('runDetail');
     detail.innerHTML = '';
     detail.hidden = !d;
     if (d) detail.append(...detailNodes(d, (S.plan.template && S.plan.template.age) || S.age));
-    $('runPrev').disabled = r.index === 0;
+
+    const mid = $('runMid'), main = $('runMain');
+    main.style.gridColumn = '';
+    if (isActive) {
+      mid.hidden = false; mid.textContent = '↺'; mid.setAttribute('aria-label', 'Restart this timer');
+      main.textContent = X.running ? 'Pause' : 'Resume';
+    } else {
+      main.textContent = ms ? 'Continue' : 'Start';
+      if (X.active) { mid.hidden = false; mid.textContent = 'Return'; mid.setAttribute('aria-label', 'Go to the running activity'); }
+      else { mid.hidden = true; main.style.gridColumn = 'span 2'; }
+    }
+    $('runPrev').disabled = idx === 0;
     $('runNextBtn').textContent = nx ? '▶' : '✓';
-    $('runNextBtn').setAttribute('aria-label', nx ? 'Next drill' : 'Finish practice');
+    $('runNextBtn').setAttribute('aria-label', nx ? 'Next activity' : 'Finish practice');
   }
 
-  function recordActual(r) { r.actual[r.index] = segElapsed(r); }
-  function gotoItem(delta) {
-    const r = S.run;
-    recordActual(r);
-    r.index += delta;
-    r.acc = 0; r.segStart = Date.now(); r.alarmed = false;
-    if (r.paused) { r.paused = false; }
-    save();
-    renderRun(true);
-    runEl.querySelector('.run-body').scrollTop = 0;
-  }
   function finishRun(saveIt) {
-    const r = S.run;
+    const X = S.session;
     if (saveIt) {
-      recordActual(r);
-      const items = r.items.map((i, n) => ({ id: i.id, minutes: r.actual[n] ? Math.max(1, Math.round(r.actual[n] / 60000)) : i.minutes }));
-      addToHistory(r.name, items);
+      stopActive();
+      addToHistory(S.plan.name, S.plan.items.map(i => ({ id: i.id, minutes: i.minutes, elapsed: X.times[i.key] || 0, note: X.notes[i.key] || '' })));
     }
-    S.run = null;
+    S.session = null;
     save();
     hideRun();
+    renderPlan();
     toast(saveIt ? 'Nice work! Practice saved to history 🎉' : 'Practice ended');
   }
 
-  $('startRun').addEventListener('click', startRun);
-  $('resumeBar').addEventListener('click', showRun);
-  $('runClose').addEventListener('click', hideRun);
-  $('runPause').addEventListener('click', () => {
-    const r = S.run;
-    unlockAudio();
-    if (r.paused) { r.paused = false; r.segStart = Date.now(); }
-    else { r.acc = segElapsed(r); r.paused = true; }
-    save(); renderRun(false);
-  });
-  $('runRestart').addEventListener('click', () => {
-    const r = S.run;
-    r.acc = 0; r.segStart = Date.now(); r.alarmed = false;
-    save(); renderRun(false);
-  });
-  $('runPrev').addEventListener('click', () => { if (S.run.index > 0) gotoItem(-1); });
-  $('runNextBtn').addEventListener('click', () => {
-    unlockAudio();
-    if (S.run.index < S.run.items.length - 1) gotoItem(1);
-    else askEnd(true);
-  });
   function changeRunMinutes(delta) {
-    const r = S.run;
-    const it = r.items[r.index];
+    const X = S.session, it = findItem(X.view);
     const next = Math.max(1, Math.min(60, it.minutes + delta));
     if (next === it.minutes) return;
     it.minutes = next;
     // Re-arm the alarm when the new length leaves time on the clock.
-    r.alarmed = segElapsed(r) >= next * 60000 && r.alarmed;
-    save(); renderRun(false); toast(`${next} min planned`);
+    if (elapsedOf(it.key) < next * 60000) X.alarmed[it.key] = false;
+    save(); renderRun(true); toast(`${next} min planned`);
   }
-  $('runSubMin').addEventListener('click', () => changeRunMinutes(-1));
-  $('runAddMin').addEventListener('click', () => changeRunMinutes(1));
+
   function askEnd(finished) {
     const dlg = $('endDialog');
     $('endTitle').textContent = finished ? 'Practice complete! 🎉' : 'End practice?';
-    dlg.returnValue = 'cancel';
-    dlg.onclose = () => {
-      if (dlg.returnValue === 'save') finishRun(true);
-      else if (dlg.returnValue === 'discard') finishRun(false);
-    };
-    dlg.showModal();
+    choose(dlg, v => {
+      if (v === 'save') finishRun(true);
+      else if (v === 'discard') finishRun(false);
+    });
   }
+
+  $('startRun').addEventListener('click', openRun);
+  $('resumeBar').addEventListener('click', openRun);
+  $('runClose').addEventListener('click', hideRun);
+  $('runLive').addEventListener('click', () => { S.session.view = S.session.active; save(); renderRun(true); $('runBody').scrollTop = 0; });
+  $('runMain').addEventListener('click', () => {
+    const X = S.session;
+    if (X.active === X.view) togglePause(); else startItem(X.view);
+  });
+  $('runMid').addEventListener('click', () => {
+    const X = S.session;
+    if (X.active === X.view) restartItem(X.view);
+    else if (X.active) { X.view = X.active; save(); renderRun(true); $('runBody').scrollTop = 0; }
+  });
+  $('runPrev').addEventListener('click', () => viewDelta(-1));
+  $('runNextBtn').addEventListener('click', () => {
+    const items = S.plan.items;
+    if (items[items.length - 1].key === S.session.view) askEnd(true); else viewDelta(1);
+  });
+  $('runNext').addEventListener('click', () => viewDelta(1));
+  $('runSubMin').addEventListener('click', () => changeRunMinutes(-1));
+  $('runAddMin').addEventListener('click', () => changeRunMinutes(1));
+  $('runNotes').addEventListener('click', () => {
+    const X = S.session, key = X.view;
+    openNote(itemName(findItem(key)), 'Saved with this practice when you finish it.', X.notes[key], text => {
+      if (text) X.notes[key] = text; else delete X.notes[key];
+      save(); renderRun(true);
+    });
+  });
   $('runEnd').addEventListener('click', () => askEnd(false));
+
+  let touch = null;
+  $('runBody').addEventListener('touchstart', e => { const t = e.touches[0]; touch = [t.clientX, t.clientY]; }, { passive: true });
+  $('runBody').addEventListener('touchend', e => {
+    if (!touch) return;
+    const t = e.changedTouches[0], dx = t.clientX - touch[0], dy = t.clientY - touch[1];
+    touch = null;
+    if (Math.abs(dx) > 70 && Math.abs(dy) < 50) viewDelta(dx < 0 ? 1 : -1);
+  }, { passive: true });
+
+  setInterval(() => {
+    const X = S.session;
+    if (!X) return;
+    const it = X.active && X.running && findItem(X.active);
+    if (it && !X.alarmed[it.key] && elapsedOf(it.key) >= it.minutes * 60000) { X.alarmed[it.key] = true; save(); beep(); }
+    if (!runEl.hidden) renderRun(false);
+    updateResumeBar();
+    if (panelOpen() && tab === 'plan') updatePlanTimes();
+  }, 500);
+
   document.addEventListener('visibilitychange', () => {
     if (document.visibilityState === 'visible' && !runEl.hidden) { keepAwake(true); renderRun(true); }
   });
