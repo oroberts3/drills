@@ -947,7 +947,13 @@
 
   /* ---------- Setup diagrams ---------- */
   const SVGNS = 'http://www.w3.org/2000/svg';
-  const DG = { cone: '#f28c28', coneEdge: '#c0620c', player: '#2563eb', pass: '#17191c', run: '#1d6f42', field: '#e4f2e7', line: '#a9d3b3' };
+  const DG = {
+    cone: '#f28c28', coneEdge: '#c0620c', pass: '#17191c', run: '#1d6f42', shot: '#b3261e',
+    field: '#e4f2e7', line: '#ffffff', edge: '#a9d3b3', ink: '#35513f',
+    team: { a: '#2563eb', b: '#dc2626', c: '#7c3aed', d: '#0e7490', coach: '#1f2937' },
+    zone: { end: 'rgba(37,99,235,.10)', water: 'rgba(56,152,236,.28)', home: 'rgba(124,58,237,.10)', safe: 'rgba(29,111,66,.12)' }
+  };
+  const DG_LABELS = { a: 'Player', b: 'Opponent', coach: 'Coach', gate: 'Cone gate', cone: 'Cone', goal: 'Goal', ball: 'Ball', pass: 'Pass', dribble: 'Dribble', run: 'Run', shot: 'Shot' };
   let dgSeq = 0;
   const svgEl = (tag, attrs, parent) => {
     const n = document.createElementNS(SVGNS, tag);
@@ -959,57 +965,118 @@
     const dx = b[0] - a[0], dy = b[1] - a[1], len = Math.hypot(dx, dy) || 1;
     return [a[0] + dx / len * dist, a[1] + dy / len * dist];
   };
-  const cone = (g, x, y) => svgEl('path', { d: `M${x},${y - 6} L${x + 5.5},${y + 4} L${x - 5.5},${y + 4} Z`, fill: DG.cone, stroke: DG.coneEdge, 'stroke-width': 1, 'stroke-linejoin': 'round' }, g);
+  const cone = (g, x, y, big) => {
+    const k = big ? 1.6 : 1;
+    return svgEl('path', { d: `M${x},${y - 6 * k} L${x + 5.5 * k},${y + 4 * k} L${x - 5.5 * k},${y + 4 * k} Z`, fill: DG.cone, stroke: DG.coneEdge, 'stroke-width': 1, 'stroke-linejoin': 'round' }, g);
+  };
+  const ballAt = (g, x, y) => svgEl('circle', { cx: x, cy: y, r: 3.8, fill: '#fff', stroke: '#17191c', 'stroke-width': 1.3 }, g);
+  const quad = (a, c, b, t) => [(1 - t) ** 2 * a[0] + 2 * (1 - t) * t * c[0] + t * t * b[0], (1 - t) ** 2 * a[1] + 2 * (1 - t) * t * c[1] + t * t * b[1]];
 
   function diagramNode(dg) {
     const W = dg.w || 320, H = dg.h || 200, id = 'dg' + (++dgSeq);
     const svg = svgEl('svg', { viewBox: `0 0 ${W} ${H}`, role: 'img', 'aria-label': dg.alt || 'Setup diagram' });
     const defs = svgEl('defs', {}, svg);
-    [['pass', DG.pass], ['run', DG.run]].forEach(([k, c]) => {
+    [['pass', DG.pass], ['run', DG.run], ['shot', DG.shot]].forEach(([k, c]) => {
       const m = svgEl('marker', { id: `${id}-${k}`, viewBox: '0 0 10 10', refX: 8, refY: 5, markerWidth: 6, markerHeight: 6, orient: 'auto-start-reverse' }, defs);
       svgEl('path', { d: 'M0,0 L10,5 L0,10 z', fill: c }, m);
     });
-    svgEl('rect', { x: 6, y: 6, width: W - 12, height: H - 12, rx: 10, fill: DG.field, stroke: DG.line, 'stroke-width': 2 }, svg);
+    svgEl('rect', { x: 4, y: 4, width: W - 8, height: H - 8, rx: 10, fill: DG.field, stroke: DG.edge, 'stroke-width': 2 }, svg);
 
-    const layers = { gate: svgEl('g', {}, svg), arrow: svgEl('g', {}, svg), player: svgEl('g', {}, svg), ball: svgEl('g', {}, svg) };
+    const L = {};
+    ['area', 'gate', 'arrow', 'player', 'ball', 'text'].forEach(k => { L[k] = svgEl('g', {}, svg); });
     const used = new Set();
+    const labels = Object.assign({}, DG_LABELS, dg.labels || {});
+
     dg.items.forEach(it => {
-      used.add(it.t);
-      if (it.t === 'cone') cone(layers.gate, it.x, it.y);
-      else if (it.t === 'gate') {
-        const r = (it.a || 0) * Math.PI / 180, ox = -Math.sin(r) * 11, oy = Math.cos(r) * 11;
-        cone(layers.gate, it.x + ox, it.y + oy);
-        cone(layers.gate, it.x - ox, it.y - oy);
-      } else if (it.t === 'player') {
-        svgEl('circle', { cx: it.x, cy: it.y, r: 8, fill: it.color || DG.player, stroke: '#fff', 'stroke-width': 2 }, layers.player);
-      } else if (it.t === 'ball') {
-        const [x, y] = toward(it.from, it.to, 11);
-        svgEl('circle', { cx: x, cy: y, r: 3.8, fill: '#fff', stroke: '#17191c', 'stroke-width': 1.3 }, layers.ball);
-      } else if (it.t === 'pass') {
-        const a = toward(it.from, it.to, 16), b = toward(it.to, it.from, 11);
-        svgEl('line', { x1: a[0], y1: a[1], x2: b[0], y2: b[1], stroke: DG.pass, 'stroke-width': 1.8, 'stroke-dasharray': '5 4', 'marker-end': `url(#${id}-pass)` }, layers.arrow);
-      } else if (it.t === 'run') {
-        const a = toward(it.from, it.via, 11), b = toward(it.to, it.via, 4);
-        svgEl('path', { d: `M${a[0]},${a[1]} Q${it.via[0]},${it.via[1]} ${b[0]},${b[1]}`, fill: 'none', stroke: DG.run, 'stroke-width': 2, 'marker-end': `url(#${id}-run)` }, layers.arrow);
+      const t = it.t;
+      if (t === 'zone') {
+        svgEl('rect', { x: it.x, y: it.y, width: it.w, height: it.h, rx: 4, fill: DG.zone[it.c || 'end'], stroke: 'none' }, L.area);
+        if (it.label) svgEl('text', { x: it.x + it.w / 2, y: it.y + (it.ly || 12), 'text-anchor': 'middle', 'font-size': 9.5, 'font-weight': 800, fill: DG.ink, opacity: .75 }, L.text).textContent = it.label;
+      } else if (t === 'grid') {
+        svgEl('rect', { x: it.x, y: it.y, width: it.w, height: it.h, fill: 'none', stroke: DG.line, 'stroke-width': 2, 'stroke-dasharray': it.solid ? '' : '6 5', rx: 2 }, L.area);
+        if (!it.solid) [[it.x, it.y], [it.x + it.w, it.y], [it.x, it.y + it.h], [it.x + it.w, it.y + it.h]].forEach(([x, y]) => cone(L.gate, x, y + 2));
+      } else if (t === 'line') {
+        svgEl('line', { x1: it.x1, y1: it.y1, x2: it.x2, y2: it.y2, stroke: DG.line, 'stroke-width': 2, 'stroke-dasharray': it.dash ? '6 5' : '' }, L.area);
+      } else if (t === 'cone') {
+        used.add(it.big ? 'castle' : 'cone');
+        cone(L.gate, it.x, it.y, it.big);
+      } else if (t === 'gate') {
+        used.add('gate');
+        const r = (it.a || 0) * Math.PI / 180, half = (it.w || 22) / 2, ox = -Math.sin(r) * half, oy = Math.cos(r) * half;
+        cone(L.gate, it.x + ox, it.y + oy);
+        cone(L.gate, it.x - ox, it.y - oy);
+      } else if (t === 'goal') {
+        used.add('goal');
+        const g = svgEl('g', { transform: `translate(${it.x},${it.y}) rotate(${it.a || 0})` }, L.gate);
+        const w = it.w || 34;
+        svgEl('rect', { x: -8, y: -w / 2, width: 8, height: w, fill: '#fff', stroke: '#4b5563', 'stroke-width': 1.6 }, g);
+        for (let y = -w / 2 + 5; y < w / 2; y += 5) svgEl('line', { x1: -8, y1: y, x2: 0, y2: y, stroke: '#c5ccd3', 'stroke-width': .8 }, g);
+        svgEl('line', { x1: 0, y1: -w / 2, x2: 0, y2: w / 2, stroke: '#4b5563', 'stroke-width': 2.4 }, g);
+      } else if (t === 'dot') {
+        svgEl('circle', { cx: it.x, cy: it.y, r: it.r || 4, fill: it.c }, L.ball);
+      } else if (t === 'player') {
+        const team = it.team || 'a';
+        used.add(team);
+        svgEl('circle', { cx: it.x, cy: it.y, r: 8, fill: DG.team[team], stroke: '#fff', 'stroke-width': 2 }, L.player);
+        const label = it.label || (team === 'coach' ? 'C' : '');
+        if (label) svgEl('text', { x: it.x, y: it.y + 3.3, 'text-anchor': 'middle', 'font-size': 9, 'font-weight': 800, fill: '#fff' }, L.player).textContent = label;
+      } else if (t === 'ball') {
+        used.add('ball');
+        const [x, y] = it.from ? toward(it.from, it.to, 11) : [it.x, it.y];
+        ballAt(L.ball, x, y);
+      } else if (t === 'pass' || t === 'shot') {
+        used.add(t);
+        const a = toward(it.from, it.to, it.start ?? 15), b = toward(it.to, it.from, it.gap ?? 11);
+        svgEl('line', { x1: a[0], y1: a[1], x2: b[0], y2: b[1], stroke: DG[t], 'stroke-width': t === 'shot' ? 2.2 : 1.8, 'stroke-dasharray': t === 'pass' ? '5 4' : '', 'marker-end': `url(#${id}-${t})` }, L.arrow);
+      } else if (t === 'run') {
+        used.add('run');
+        const via = it.via || [(it.from[0] + it.to[0]) / 2, (it.from[1] + it.to[1]) / 2];
+        const a = toward(it.from, via, it.start ?? 11), b = toward(it.to, via, it.gap ?? 4);
+        svgEl('path', { d: `M${a[0]},${a[1]} Q${via[0]},${via[1]} ${b[0]},${b[1]}`, fill: 'none', stroke: DG.run, 'stroke-width': 2, 'marker-end': `url(#${id}-run)` }, L.arrow);
+      } else if (t === 'dribble') {
+        used.add('dribble');
+        const via = it.via || [(it.from[0] + it.to[0]) / 2, (it.from[1] + it.to[1]) / 2];
+        const a = toward(it.from, via, it.start ?? 12), b = toward(it.to, via, it.gap ?? 3);
+        const n = 28, pts = [];
+        let len = 0, prev = a;
+        for (let i = 0; i <= n; i++) { const p = quad(a, via, b, i / n); len += Math.hypot(p[0] - prev[0], p[1] - prev[1]); prev = p; pts.push([p, len]); }
+        const d = pts.map(([p, s], i) => {
+          if (i === 0 || i >= n - 2) return `${i ? 'L' : 'M'}${p[0].toFixed(1)},${p[1].toFixed(1)}`;
+          const q = pts[i + 1][0], nx = -(q[1] - p[1]), ny = q[0] - p[0], nl = Math.hypot(nx, ny) || 1, o = Math.sin(s / 3.2) * 2.6;
+          return `L${(p[0] + nx / nl * o).toFixed(1)},${(p[1] + ny / nl * o).toFixed(1)}`;
+        }).join(' ');
+        svgEl('path', { d, fill: 'none', stroke: DG.pass, 'stroke-width': 1.6, 'stroke-linejoin': 'round', 'marker-end': `url(#${id}-pass)` }, L.arrow);
+      } else if (t === 'text') {
+        svgEl('text', { x: it.x, y: it.y, 'text-anchor': it.anchor || 'middle', 'font-size': it.size || 10, 'font-weight': 800, fill: it.c || DG.ink }, L.text).textContent = it.s;
       }
     });
 
     const wrap = el('div', 'diagram');
     wrap.append(svg);
     const legend = el('div', 'diagram-legend');
-    const key = (label, draw) => {
+    const key = (k, draw) => {
+      if (!used.has(k)) return;
       const s = svgEl('svg', { viewBox: '0 0 22 12', 'aria-hidden': 'true' });
       draw(s);
       const span = el('span');
-      span.append(s, label);
+      span.append(s, labels[k] || k);
       legend.append(span);
     };
-    if (used.has('gate')) key('Cone gate', s => { cone(s, 6, 6); cone(s, 16, 6); });
-    else if (used.has('cone')) key('Cone', s => cone(s, 11, 6));
-    if (used.has('player')) key('Player', s => svgEl('circle', { cx: 11, cy: 6, r: 5, fill: DG.player }, s));
-    if (used.has('ball')) key('Ball', s => svgEl('circle', { cx: 11, cy: 6, r: 3.5, fill: '#fff', stroke: '#17191c', 'stroke-width': 1.2 }, s));
-    if (used.has('pass')) key('Pass', s => svgEl('line', { x1: 1, y1: 6, x2: 21, y2: 6, stroke: DG.pass, 'stroke-width': 1.8, 'stroke-dasharray': '4 3' }, s));
-    if (used.has('run')) key('Run', s => svgEl('line', { x1: 1, y1: 6, x2: 21, y2: 6, stroke: DG.run, 'stroke-width': 2 }, s));
+    const dotKey = c => s => svgEl('circle', { cx: 11, cy: 6, r: 5, fill: c }, s);
+    key('a', dotKey(DG.team.a));
+    key('b', dotKey(DG.team.b));
+    key('c', dotKey(DG.team.c));
+    key('d', dotKey(DG.team.d));
+    key('coach', dotKey(DG.team.coach));
+    key('ball', s => ballAt(s, 11, 6));
+    key('gate', s => { cone(s, 6, 7); cone(s, 16, 7); });
+    key('cone', s => cone(s, 11, 7));
+    key('castle', s => cone(s, 11, 7));
+    key('goal', s => { svgEl('rect', { x: 4, y: 2, width: 14, height: 8, fill: '#fff', stroke: '#4b5563', 'stroke-width': 1.4 }, s); });
+    key('pass', s => svgEl('line', { x1: 1, y1: 6, x2: 21, y2: 6, stroke: DG.pass, 'stroke-width': 1.8, 'stroke-dasharray': '4 3' }, s));
+    key('dribble', s => svgEl('path', { d: 'M1,6 Q4,2 7,6 T13,6 T19,6 L21,6', fill: 'none', stroke: DG.pass, 'stroke-width': 1.5 }, s));
+    key('run', s => svgEl('line', { x1: 1, y1: 6, x2: 21, y2: 6, stroke: DG.run, 'stroke-width': 2 }, s));
+    key('shot', s => svgEl('line', { x1: 1, y1: 6, x2: 21, y2: 6, stroke: DG.shot, 'stroke-width': 2.2 }, s));
     wrap.append(legend);
     return wrap;
   }
@@ -1028,7 +1095,7 @@
     if (d.diagram) {
       const s = el('div', 'section');
       s.append(el('div', 'label', 'Diagram'), diagramNode(d.diagram));
-      out.splice(1, 0, s);
+      out.push(s);
     }
     const ages = Object.entries(d.ages).filter(([k]) => !age || k.toLowerCase() === age);
     if (ages.length) {
