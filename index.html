@@ -1,0 +1,1333 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#ffffff">
+<title>U6/U7 Soccer Drill Deck</title>
+<style>
+  :root {
+    --bg:#f6f7f8;
+    --card:#ffffff;
+    --text:#17191c;
+    --muted:#69717b;
+    --line:#dfe3e8;
+    --accent:#1d6f42;
+    --accent-soft:#e9f5ee;
+    --shadow:0 2px 12px rgba(0,0,0,.08);
+    --radius:14px;
+  }
+  * { box-sizing:border-box; }
+  html { scroll-behavior:smooth; }
+  body {
+    margin:0;
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    background:var(--bg);
+    color:var(--text);
+    -webkit-tap-highlight-color:transparent;
+  }
+  .app {
+    width:min(760px,100%);
+    margin:0 auto;
+    padding:12px 12px calc(92px + env(safe-area-inset-bottom));
+  }
+  header {
+    padding:8px 2px 10px;
+  }
+  h1 {
+    font-size:24px;
+    line-height:1.15;
+    margin:0 0 4px;
+  }
+  .subtitle {
+    color:var(--muted);
+    font-size:14px;
+    margin:0;
+  }
+  .tools {
+    display:flex;
+    gap:8px;
+    margin:12px 0;
+    position:sticky;
+    top:0;
+    z-index:20;
+    padding:8px 0;
+    background:linear-gradient(var(--bg) 75%, rgba(246,247,248,0));
+  }
+  .search-wrap { flex:1; position:relative; }
+  .search {
+    width:100%;
+    border:1px solid var(--line);
+    background:var(--card);
+    border-radius:12px;
+    padding:12px 38px 12px 12px;
+    font-size:16px;
+    outline:none;
+  }
+  .search:focus { border-color:#9ab8a7; box-shadow:0 0 0 3px rgba(29,111,66,.08); }
+  .clear-search {
+    position:absolute;
+    right:8px; top:50%;
+    transform:translateY(-50%);
+    width:28px; height:28px;
+    border:0; border-radius:50%;
+    background:transparent;
+    font-size:20px; color:var(--muted);
+    display:none;
+  }
+  .random-btn {
+    border:1px solid var(--line);
+    background:var(--card);
+    border-radius:12px;
+    padding:0 12px;
+    font-size:15px;
+    white-space:nowrap;
+  }
+  .status {
+    color:var(--muted);
+    font-size:13px;
+    margin:0 2px 8px;
+  }
+  .drill {
+    background:var(--card);
+    border:1px solid var(--line);
+    border-radius:var(--radius);
+    margin:8px 0;
+    overflow:clip;
+    box-shadow:0 1px 4px rgba(0,0,0,.03);
+    scroll-margin-top:68px;
+  }
+  .drill[open] {
+    box-shadow:var(--shadow);
+    border-color:#cbd5ce;
+  }
+  .drill summary {
+    list-style:none;
+    cursor:pointer;
+    padding:14px 14px;
+    font-weight:700;
+    font-size:17px;
+    display:flex;
+    align-items:center;
+    gap:10px;
+    background:var(--card);
+  }
+  .drill[open] summary {
+    position:sticky;
+    top:62px;
+    z-index:10;
+    border-bottom:1px solid var(--line);
+  }
+  .drill summary::-webkit-details-marker { display:none; }
+  .summary-main { min-width:0; flex:1; }
+  .favorite-btn {
+    border:0;
+    background:transparent;
+    font-size:24px;
+    line-height:1;
+    padding:4px 6px;
+    color:#a3a9b0;
+    cursor:pointer;
+    flex:0 0 auto;
+  }
+  .favorite-btn.is-favorite { color:#d59a00; }
+  .drill-actions {
+    display:flex;
+    gap:8px;
+    margin:0 0 14px;
+  }
+  .drill-action {
+    border:1px solid var(--line);
+    background:#fff;
+    border-radius:10px;
+    padding:9px 11px;
+    font-size:13px;
+    font-weight:800;
+    cursor:pointer;
+  }
+  .drill-action.primary {
+    background:var(--accent-soft);
+    color:var(--accent);
+    border-color:#b8d8c4;
+  }
+  .drill-action.added {
+    background:var(--accent);
+    color:#fff;
+    border-color:var(--accent);
+  }
+  .summary-title {
+    display:block;
+    white-space:nowrap;
+    overflow:hidden;
+    text-overflow:ellipsis;
+  }
+  .summary-meta {
+    display:flex;
+    flex-wrap:wrap;
+    gap:5px;
+    margin-top:5px;
+    font-size:12px;
+    font-weight:600;
+    color:var(--muted);
+  }
+  .mini-tag {
+    background:#f0f2f4;
+    padding:3px 7px;
+    border-radius:999px;
+  }
+  .chev {
+    width:24px; height:24px;
+    border-radius:50%;
+    background:#f1f3f5;
+    display:grid; place-items:center;
+    font-size:15px;
+    transition:transform .18s ease;
+    flex:0 0 auto;
+  }
+  .drill[open] .chev { transform:rotate(180deg); }
+  .content { padding:14px; }
+  .section { margin:0 0 14px; }
+  .section:last-child { margin-bottom:2px; }
+  .label {
+    text-transform:uppercase;
+    letter-spacing:.06em;
+    font-size:11px;
+    font-weight:800;
+    color:var(--muted);
+    margin-bottom:5px;
+  }
+  .section p, .section ul {
+    margin:0;
+    line-height:1.45;
+    font-size:15px;
+  }
+  .section ul { padding-left:19px; }
+  .section li + li { margin-top:4px; }
+  .age-grid {
+    display:grid;
+    grid-template-columns:1fr;
+    gap:8px;
+  }
+  .age-note {
+    padding:10px 11px;
+    border-radius:10px;
+    background:#f7f8fa;
+    border:1px solid #eceff2;
+    font-size:14px;
+    line-height:1.4;
+  }
+  .age-note b { display:block; margin-bottom:2px; }
+  .empty {
+    display:none;
+    text-align:center;
+    padding:32px 18px;
+    color:var(--muted);
+  }
+  .filter-bar {
+    position:fixed;
+    left:0; right:0; bottom:0;
+    z-index:40;
+    padding:10px 12px calc(10px + env(safe-area-inset-bottom));
+    background:rgba(255,255,255,.94);
+    border-top:1px solid var(--line);
+    backdrop-filter:blur(14px);
+  }
+  .filter-inner {
+    width:min(760px,100%);
+    margin:0 auto;
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:8px;
+  }
+  .filter-open {
+    width:100%;
+    min-height:48px;
+    border:1px solid var(--line);
+    background:var(--card);
+    border-radius:13px;
+    font-size:16px;
+    font-weight:700;
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    padding:0 14px;
+  }
+  .filter-count {
+    min-width:26px; height:26px;
+    border-radius:999px;
+    background:var(--accent-soft);
+    color:var(--accent);
+    display:grid; place-items:center;
+    font-size:13px;
+  }
+  .sheet-backdrop {
+    position:fixed; inset:0;
+    background:rgba(0,0,0,.28);
+    z-index:49;
+    display:none;
+  }
+  .sheet-handle {
+    width:42px; height:5px; border-radius:999px;
+    background:#d9dde2; margin:0 auto 12px;
+  }
+  .sheet-head {
+    display:flex; justify-content:space-between; align-items:center;
+    margin-bottom:10px;
+  }
+  .sheet-title { font-size:20px; font-weight:800; }
+  .match-toggle {
+    display:flex;
+    gap:4px;
+    background:#f0f2f4;
+    border-radius:10px;
+    padding:3px;
+  }
+  .match-toggle button {
+    border:0;
+    background:transparent;
+    border-radius:8px;
+    padding:7px 9px;
+    font-weight:700;
+    color:var(--muted);
+  }
+  .match-toggle button.active {
+    background:var(--card);
+    color:var(--text);
+    box-shadow:0 1px 4px rgba(0,0,0,.08);
+  }
+  .tag-group { margin:14px 0; }
+  .tag-group-title {
+    font-size:12px;
+    font-weight:800;
+    color:var(--muted);
+    text-transform:uppercase;
+    letter-spacing:.05em;
+    margin-bottom:7px;
+  }
+  .chips { display:flex; flex-wrap:wrap; gap:8px; }
+  .chip {
+    border:1px solid var(--line);
+    background:#fff;
+    border-radius:999px;
+    padding:9px 12px;
+    font-size:14px;
+    font-weight:700;
+  }
+  .chip.selected {
+    background:var(--accent-soft);
+    color:var(--accent);
+    border-color:#9bc8aa;
+  }
+  .sheet-actions {
+    position:sticky;
+    bottom:-12px;
+    display:grid;
+    grid-template-columns:1fr 2fr;
+    gap:8px;
+    padding:10px 0 12px;
+    background:linear-gradient(rgba(255,255,255,.80), #fff 24%);
+  }
+  .btn {
+    min-height:48px;
+    border-radius:12px;
+    font-size:16px;
+    font-weight:800;
+  }
+  .btn-clear { border:1px solid var(--line); background:#fff; }
+  .btn-ok { border:1px solid var(--accent); background:var(--accent); color:#fff; }
+  .active-filter-pills {
+    display:flex; flex-wrap:wrap; gap:6px;
+    margin:0 2px 8px;
+  }
+  .active-filter-pills:empty { display:none; }
+  .active-pill {
+    font-size:12px;
+    font-weight:700;
+    background:var(--accent-soft);
+    color:var(--accent);
+    border-radius:999px;
+    padding:5px 8px;
+  }
+  @media (min-width:620px) {
+    .age-grid { grid-template-columns:1fr 1fr; }
+  }
+</style>
+
+
+<style>
+  .filter-hint {
+    color:var(--muted);
+    font-size:12px;
+    font-weight:600;
+  }
+
+  .filter-popover {
+    position:fixed;
+    inset:auto 0 0 0;
+    width:100%;
+    max-width:none;
+    max-height:78vh;
+    margin:0;
+    padding:0;
+    border:0;
+    border-radius:20px 20px 0 0;
+    background:var(--card);
+    color:var(--text);
+    box-shadow:0 -10px 30px rgba(0,0,0,.16);
+    overflow:auto;
+  }
+
+  .filter-popover::backdrop {
+    background:rgba(0,0,0,.30);
+  }
+
+  .filter-popover form {
+    width:min(760px,100%);
+    margin:0 auto;
+    padding:12px 12px calc(12px + env(safe-area-inset-bottom));
+  }
+
+  .filter-note {
+    margin:0 0 12px;
+    color:var(--muted);
+    font-size:13px;
+    line-height:1.35;
+  }
+
+  .chip {
+    position:relative;
+    cursor:pointer;
+    user-select:none;
+  }
+
+  .chip input {
+    position:absolute;
+    opacity:0;
+    pointer-events:none;
+  }
+
+  .chip:has(input:checked) {
+    background:var(--accent-soft);
+    color:var(--accent);
+    border-color:#9bc8aa;
+  }
+
+  /* Native CSS filter logic: selected tags are ANDed together. */
+  body:has(#f-favorites:checked) .drill:not([data-favorite="true"]) { display:none; }
+  body:has(#f-u6:checked) .drill:not([data-tags~="u6"]) { display:none; }
+  body:has(#f-u7:checked) .drill:not([data-tags~="u7"]) { display:none; }
+
+  body:has(#f-warmup:checked) .drill:not([data-tags~="warmup"]) { display:none; }
+  body:has(#f-dribbling:checked) .drill:not([data-tags~="dribbling"]) { display:none; }
+  body:has(#f-passing:checked) .drill:not([data-tags~="passing"]) { display:none; }
+  body:has(#f-shooting:checked) .drill:not([data-tags~="shooting"]) { display:none; }
+  body:has(#f-game:checked) .drill:not([data-tags~="game"]) { display:none; }
+  body:has(#f-finisher:checked) .drill:not([data-tags~="finisher"]) { display:none; }
+  body:has(#f-shielding:checked) .drill:not([data-tags~="shielding"]) { display:none; }
+  body:has(#f-transition:checked) .drill:not([data-tags~="transition"]) { display:none; }
+  body:has(#f-decision:checked) .drill:not([data-tags~="decision-making"]) { display:none; }
+
+  body:has(#f-solo:checked) .drill:not([data-tags~="solo"]) { display:none; }
+  body:has(#f-partner:checked) .drill:not([data-tags~="partner"]) { display:none; }
+  body:has(#f-vs:checked) .drill:not([data-tags~="vs"]) { display:none; }
+  body:has(#f-team:checked) .drill:not([data-tags~="team"]) { display:none; }
+  body:has(#f-free:checked) .drill:not([data-tags~="free-for-all"]) { display:none; }
+  body:has(#f-1v1:checked) .drill:not([data-tags~="1v1"]) { display:none; }
+  body:has(#f-2v1:checked) .drill:not([data-tags~="2v1"]) { display:none; }
+  body:has(#f-2v2:checked) .drill:not([data-tags~="2v2"]) { display:none; }
+  body:has(#f-3v3:checked) .drill:not([data-tags~="3v3"]) { display:none; }
+  body:has(#f-4v4:checked) .drill:not([data-tags~="4v4"]) { display:none; }
+
+  body:has(#f-ball-each:checked) .drill:not([data-tags~="ball-each"]) { display:none; }
+  body:has(#f-low-setup:checked) .drill:not([data-tags~="low-setup"]) { display:none; }
+  body:has(#f-competitive:checked) .drill:not([data-tags~="competitive"]) { display:none; }
+
+  @supports not selector(body:has(*)) {
+    .filter-note::after {
+      content:" Filtering requires a modern Safari/Chrome browser.";
+      font-weight:700;
+    }
+  }
+</style>
+
+
+<style>
+  .bottom-action {
+    min-height:48px;
+    border:1px solid var(--line);
+    background:var(--card);
+    border-radius:13px;
+    font-size:16px;
+    font-weight:800;
+    display:flex;
+    justify-content:center;
+    gap:8px;
+    align-items:center;
+    padding:0 12px;
+  }
+  .count-badge {
+    min-width:24px;
+    height:24px;
+    border-radius:999px;
+    background:var(--accent-soft);
+    color:var(--accent);
+    display:grid;
+    place-items:center;
+    font-size:12px;
+  }
+  .builder-popover {
+    position:fixed;
+    inset:auto 0 0 0;
+    width:100%;
+    max-width:none;
+    max-height:82vh;
+    margin:0;
+    padding:0;
+    border:0;
+    border-radius:20px 20px 0 0;
+    background:var(--card);
+    color:var(--text);
+    box-shadow:0 -10px 30px rgba(0,0,0,.16);
+    overflow:auto;
+  }
+  .builder-popover::backdrop { background:rgba(0,0,0,.30); }
+  .builder-inner {
+    width:min(760px,100%);
+    margin:0 auto;
+    padding:12px 12px calc(12px + env(safe-area-inset-bottom));
+  }
+  .builder-head {
+    display:flex;
+    justify-content:space-between;
+    gap:12px;
+    align-items:flex-start;
+  }
+  .builder-sub {
+    color:var(--muted);
+    margin:4px 0 12px;
+    font-size:13px;
+    line-height:1.35;
+  }
+  .plan-list { display:grid; gap:8px; margin:12px 0; }
+  .plan-row {
+    display:grid;
+    grid-template-columns:1fr auto;
+    gap:10px;
+    align-items:center;
+    border:1px solid var(--line);
+    border-radius:12px;
+    padding:10px 10px 10px 12px;
+    background:#fff;
+  }
+  .plan-name { font-weight:800; font-size:15px; }
+  .plan-meta { color:var(--muted); font-size:12px; margin-top:2px; }
+  .plan-controls { display:flex; gap:4px; }
+  .plan-controls button {
+    width:32px; height:32px;
+    border:1px solid var(--line);
+    background:#fff;
+    border-radius:8px;
+    font-weight:900;
+  }
+  .plan-summary {
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    border-top:1px solid var(--line);
+    margin-top:10px;
+    padding-top:12px;
+    font-weight:800;
+  }
+  .builder-actions {
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:8px;
+    margin-top:12px;
+  }
+  .empty-plan {
+    color:var(--muted);
+    text-align:center;
+    padding:22px 10px;
+    border:1px dashed var(--line);
+    border-radius:12px;
+  }
+  .favorite-filter-note {
+    margin:8px 0 0;
+    font-size:12px;
+    color:var(--muted);
+  }
+</style>
+
+
+<style>
+  .fav-star-display {
+    width:18px;
+    min-width:18px;
+    text-align:center;
+    font-size:18px;
+    line-height:1;
+    color:#d59a00;
+    pointer-events:none;
+    user-select:none;
+  }
+  .drill-actions {
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:8px;
+    margin:0 0 14px;
+  }
+  .favorite-action-btn {
+    background:#fff;
+    color:var(--text);
+    border-color:var(--line);
+  }
+  .favorite-action-btn.is-favorite {
+    background:#fff8e6;
+    color:#8a6500;
+    border-color:#e5c76f;
+  }
+  @media (max-width:420px) {
+    .drill-actions { grid-template-columns:1fr; }
+  }
+</style>
+
+</head>
+<body>
+<div class="app">
+  <header>
+    <h1>U6/U7 Soccer Drill Deck</h1>
+    <p class="subtitle">Tap a drill to expand it. Star favorites or add drills to a saved practice plan.</p>
+  </header>
+
+
+  <main id="drillList">
+
+    <details class="drill" name="soccer-drills" data-tags="warmup dribbling solo ball-each low-setup u6 u7 both" data-minutes="7">
+      <summary>
+        <div class="summary-main">
+          <span class="summary-title">Traffic Lights</span>
+          <span class="summary-meta"><span class="mini-tag">Warmup</span><span class="mini-tag">Dribbling</span><span class="mini-tag">5–8 min</span></span>
+        </div><span class="fav-star-display" aria-hidden="true"></span><span class="chev">⌄</span>
+      </summary>
+      <div class="content">
+        <div class="drill-actions">
+          <button class="drill-action primary add-plan-btn" type="button">＋ Add to practice</button>
+          <button class="drill-action favorite-action-btn" type="button">☆ Add to favorites</button>
+        </div>
+        <div class="section"><div class="label">Setup</div><p>20×20-ish grid. Every player has a ball.</p></div>
+        <div class="section"><div class="label">How to play</div><ul><li>Green = dribble.</li><li>Yellow = slow, tiny touches.</li><li>Red = stop the ball.</li><li>Add purple = turn around, blue = 3 toe taps, etc.</li></ul></div>
+        <div class="section"><div class="label">Coaching cues</div><p>Head up when possible. Keep the ball close in traffic; use a bigger touch when there is open grass.</p></div>
+        <div class="age-grid"><div class="age-note"><b>U6</b>Keep commands simple and silly. No elimination.</div><div class="age-note"><b>U7</b>Add right-foot/left-foot rounds, pullbacks, and changes of direction.</div></div>
+      </div>
+    </details>
+
+    <details class="drill" name="soccer-drills" data-tags="warmup dribbling solo ball-each low-setup u6 u7 both" data-minutes="7">
+      <summary>
+        <div class="summary-main"><span class="summary-title">Coach Says</span><span class="summary-meta"><span class="mini-tag">Warmup</span><span class="mini-tag">Ball control</span><span class="mini-tag">5–8 min</span></span></div><span class="fav-star-display" aria-hidden="true"></span><span class="chev">⌄</span>
+      </summary>
+      <div class="content">
+        <div class="drill-actions">
+          <button class="drill-action primary add-plan-btn" type="button">＋ Add to practice</button>
+          <button class="drill-action favorite-action-btn" type="button">☆ Add to favorites</button>
+        </div>
+        <div class="section"><div class="label">Setup</div><p>Everyone has a ball inside a grid.</p></div>
+        <div class="section"><div class="label">How to play</div><p>Simon Says with a soccer ball: stop it, pull it back, turn, toe taps, put a knee/elbow on it, dribble around a cone, find new space.</p></div>
+        <div class="section"><div class="label">Coaching cues</div><p>Keep them moving. Use commands to sneak in technique without stopping for long explanations.</p></div>
+        <div class="age-grid"><div class="age-note"><b>U6</b>Favor fun body-part commands and basic stops/starts.</div><div class="age-note"><b>U7</b>Add sole rolls, inside/outside touches, and weak-foot challenges.</div></div>
+      </div>
+    </details>
+
+    <details class="drill" name="soccer-drills" data-tags="warmup dribbling vs free-for-all competitive ball-each u6 u7 both" data-minutes="9">
+      <summary>
+        <div class="summary-main"><span class="summary-title">Sharks & Minnows</span><span class="summary-meta"><span class="mini-tag">Dribbling</span><span class="mini-tag">Vs</span><span class="mini-tag">8–10 min</span></span></div><span class="fav-star-display" aria-hidden="true"></span><span class="chev">⌄</span>
+      </summary>
+      <div class="content">
+        <div class="drill-actions">
+          <button class="drill-action primary add-plan-btn" type="button">＋ Add to practice</button>
+          <button class="drill-action favorite-action-btn" type="button">☆ Add to favorites</button>
+        </div>
+        <div class="section"><div class="label">Setup</div><p>Players with balls on one end line. 1–2 sharks begin in the middle.</p></div>
+        <div class="section"><div class="label">How to play</div><p>Minnows dribble to the opposite end without having their ball knocked out. If a ball goes out, either re-enter immediately or become a shark.</p></div>
+        <div class="section"><div class="label">Coaching cues</div><p>“Can you see the shark and the ball?” “Where is the open space?” Change speed after getting around pressure.</p></div>
+        <div class="age-grid"><div class="age-note"><b>U6</b>Use immediate re-entry so nobody stands around.</div><div class="age-note"><b>U7</b>Encourage shielding, fakes, and deliberate changes of direction.</div></div>
+      </div>
+    </details>
+
+    <details class="drill" name="soccer-drills" data-tags="warmup dribbling solo free-for-all ball-each low-setup u6 u7 both" data-minutes="9">
+      <summary>
+        <div class="summary-main"><span class="summary-title">Gates</span><span class="summary-meta"><span class="mini-tag">Dribbling</span><span class="mini-tag">Solo</span><span class="mini-tag">8–10 min</span></span></div><span class="fav-star-display" aria-hidden="true"></span><span class="chev">⌄</span>
+      </summary>
+      <div class="content">
+        <div class="drill-actions">
+          <button class="drill-action primary add-plan-btn" type="button">＋ Add to practice</button>
+          <button class="drill-action favorite-action-btn" type="button">☆ Add to favorites</button>
+        </div>
+        <div class="section"><div class="label">Setup</div><p>Scatter 8–12 cone gates around the field. Every player has a ball.</p></div>
+        <div class="section"><div class="label">How to play</div><ul><li>Score 1 point for dribbling through a gate.</li><li>Try for as many as possible in 45 seconds.</li><li>Cannot use the same gate twice in a row.</li></ul></div>
+        <div class="section"><div class="label">Progressions</div><p>Right foot through one, left through the next; turn after each gate; pair up and pass through gates.</p></div>
+        <div class="age-grid"><div class="age-note"><b>U6</b>Mostly free dribbling and counting gates.</div><div class="age-note"><b>U7</b>Turn it into partner passing or require scanning for an unused gate.</div></div>
+      </div>
+    </details>
+
+    <details class="drill" name="soccer-drills" data-tags="warmup dribbling passing team ball-each u6 u7 both" data-minutes="8">
+      <summary>
+        <div class="summary-main"><span class="summary-title">Freeze Tag</span><span class="summary-meta"><span class="mini-tag">Warmup</span><span class="mini-tag">Team</span><span class="mini-tag">8 min</span></span></div><span class="fav-star-display" aria-hidden="true"></span><span class="chev">⌄</span>
+      </summary>
+      <div class="content">
+        <div class="drill-actions">
+          <button class="drill-action primary add-plan-btn" type="button">＋ Add to practice</button>
+          <button class="drill-action favorite-action-btn" type="button">☆ Add to favorites</button>
+        </div>
+        <div class="section"><div class="label">Setup</div><p>Everyone dribbles in a grid. Choose 1–2 taggers.</p></div>
+        <div class="section"><div class="label">How to play</div><p>If tagged, freeze with one foot on the ball. A teammate unfreezes you by dribbling or passing through your legs.</p></div>
+        <div class="section"><div class="label">Coaching cues</div><p>Look up, recognize teammates who need help, and control the ball before trying to rescue someone.</p></div>
+        <div class="age-grid"><div class="age-note"><b>U6</b>Let players simply dribble through the frozen player’s legs.</div><div class="age-note"><b>U7</b>Require a controlled pass through the legs to unfreeze.</div></div>
+      </div>
+    </details>
+
+    <details class="drill" name="soccer-drills" data-tags="dribbling team competitive ball-each u6 u7 both" data-minutes="9">
+      <summary>
+        <div class="summary-main"><span class="summary-title">Treasure Hunt</span><span class="summary-meta"><span class="mini-tag">Team</span><span class="mini-tag">Dribbling</span><span class="mini-tag">8–10 min</span></span></div><span class="fav-star-display" aria-hidden="true"></span><span class="chev">⌄</span>
+      </summary>
+      <div class="content">
+        <div class="drill-actions">
+          <button class="drill-action primary add-plan-btn" type="button">＋ Add to practice</button>
+          <button class="drill-action favorite-action-btn" type="button">☆ Add to favorites</button>
+        </div>
+        <div class="section"><div class="label">Setup</div><p>Put 20–30 cones/pinnies in the center. Give each team a “home” in a corner.</p></div>
+        <div class="section"><div class="label">How to play</div><p>Players dribble out, collect one treasure, and dribble it home. Once the middle is empty, allow stealing from other teams.</p></div>
+        <div class="section"><div class="label">Coaching cues</div><p>Control the ball while changing direction. Find the least crowded route.</p></div>
+        <div class="age-grid"><div class="age-note"><b>U6</b>No complicated rules; let the chaos be fun.</div><div class="age-note"><b>U7</b>Add stealing and ask players to choose the safest open route.</div></div>
+      </div>
+    </details>
+
+    <details class="drill" name="soccer-drills" data-tags="dribbling vs free-for-all competitive ball-each shielding u6 u7 both" data-minutes="8">
+      <summary>
+        <div class="summary-main"><span class="summary-title">Knockout</span><span class="summary-meta"><span class="mini-tag">Dribbling</span><span class="mini-tag">Free for all</span><span class="mini-tag">8 min</span></span></div><span class="fav-star-display" aria-hidden="true"></span><span class="chev">⌄</span>
+      </summary>
+      <div class="content">
+        <div class="drill-actions">
+          <button class="drill-action primary add-plan-btn" type="button">＋ Add to practice</button>
+          <button class="drill-action favorite-action-btn" type="button">☆ Add to favorites</button>
+        </div>
+        <div class="section"><div class="label">Setup</div><p>Everyone has a ball inside a grid.</p></div>
+        <div class="section"><div class="label">How to play</div><p>Protect your ball while trying to knock other balls outside. If yours goes out: retrieve it, do 3 toe taps, and immediately return.</p></div>
+        <div class="section"><div class="label">Coaching cues</div><p>Body between defender and ball. Keep your ball close before attacking someone else’s.</p></div>
+        <div class="age-grid"><div class="age-note"><b>U6</b>Use a larger grid and no elimination.</div><div class="age-note"><b>U7</b>Shrink the grid as they improve to create more pressure.</div></div>
+      </div>
+    </details>
+
+    <details class="drill" name="soccer-drills" data-tags="shooting passing team competitive free-for-all balls u6 u7 both" data-minutes="9">
+      <summary>
+        <div class="summary-main"><span class="summary-title">Clean Your Room</span><span class="summary-meta"><span class="mini-tag">Shooting</span><span class="mini-tag">Team</span><span class="mini-tag">8–10 min</span></span></div><span class="fav-star-display" aria-hidden="true"></span><span class="chev">⌄</span>
+      </summary>
+      <div class="content">
+        <div class="drill-actions">
+          <button class="drill-action primary add-plan-btn" type="button">＋ Add to practice</button>
+          <button class="drill-action favorite-action-btn" type="button">☆ Add to favorites</button>
+        </div>
+        <div class="section"><div class="label">Setup</div><p>Split the field in half. Scatter many balls on both sides.</p></div>
+        <div class="section"><div class="label">How to play</div><p>Teams kick balls into the opponent’s half. After 45–60 seconds, stop. The side with fewer balls wins.</p></div>
+        <div class="section"><div class="label">Coaching cues</div><p>Plant foot beside the ball, strike through it, and find open targets instead of kicking into a crowd.</p></div>
+        <div class="age-grid"><div class="age-note"><b>U6</b>Focus on lots of fun striking repetitions.</div><div class="age-note"><b>U7</b>Add target zones or require passes below knee height.</div></div>
+      </div>
+    </details>
+
+    <details class="drill" name="soccer-drills" data-tags="dribbling shooting vs 1v1 competitive low-setup u6 u7 both" data-minutes="10">
+      <summary>
+        <div class="summary-main"><span class="summary-title">1v1 to Two Goals</span><span class="summary-meta"><span class="mini-tag">1v1</span><span class="mini-tag">Attacking</span><span class="mini-tag">10 min</span></span></div><span class="fav-star-display" aria-hidden="true"></span><span class="chev">⌄</span>
+      </summary>
+      <div class="content">
+        <div class="drill-actions">
+          <button class="drill-action primary add-plan-btn" type="button">＋ Add to practice</button>
+          <button class="drill-action favorite-action-btn" type="button">☆ Add to favorites</button>
+        </div>
+        <div class="section"><div class="label">Setup</div><p>Create several tiny fields with one small goal on each end. Pair players by field.</p></div>
+        <div class="section"><div class="label">How to play</div><p>Serve a ball in. Players compete 1v1 until someone scores or the ball leaves the field. Keep rounds around 20–30 seconds.</p></div>
+        <div class="section"><div class="label">Coaching cues</div><p>Attack immediately. Get between defender and ball. If blocked, change direction.</p></div>
+        <div class="age-grid"><div class="age-note"><b>U6</b>Minimal instruction: “Go score!”</div><div class="age-note"><b>U7</b>Encourage a fake, acceleration, or deliberate change of direction.</div></div>
+      </div>
+    </details>
+
+    <details class="drill" name="soccer-drills" data-tags="dribbling vs 1v1 competitive decision-making u6 u7 both" data-minutes="9">
+      <summary>
+        <div class="summary-main"><span class="summary-title">1v1 Escape Gates</span><span class="summary-meta"><span class="mini-tag">1v1</span><span class="mini-tag">Dribbling</span><span class="mini-tag">8–10 min</span></span></div><span class="fav-star-display" aria-hidden="true"></span><span class="chev">⌄</span>
+      </summary>
+      <div class="content">
+        <div class="drill-actions">
+          <button class="drill-action primary add-plan-btn" type="button">＋ Add to practice</button>
+          <button class="drill-action favorite-action-btn" type="button">☆ Add to favorites</button>
+        </div>
+        <div class="section"><div class="label">Setup</div><p>Put two small gates on opposite sides of a small grid. One attacker, one defender.</p></div>
+        <div class="section"><div class="label">How to play</div><p>The attacker scores by dribbling under control through either gate. Defender tries to win the ball.</p></div>
+        <div class="section"><div class="label">Coaching cues</div><p>If the defender takes away one gate, attack the other. Sell the fake before changing direction.</p></div>
+        <div class="age-grid"><div class="age-note"><b>U6</b>Make gates wide and defender pressure moderate.</div><div class="age-note"><b>U7</b>Narrow gates or award bonus points for beating the defender after a fake.</div></div>
+      </div>
+    </details>
+
+    <details class="drill" name="soccer-drills" data-tags="shooting dribbling vs 1v1 competitive transition u6 u7 both" data-minutes="10">
+      <summary>
+        <div class="summary-main"><span class="summary-title">1v1 to Goal</span><span class="summary-meta"><span class="mini-tag">1v1</span><span class="mini-tag">Shooting</span><span class="mini-tag">10 min</span></span></div><span class="fav-star-display" aria-hidden="true"></span><span class="chev">⌄</span>
+      </summary>
+      <div class="content">
+        <div class="drill-actions">
+          <button class="drill-action primary add-plan-btn" type="button">＋ Add to practice</button>
+          <button class="drill-action favorite-action-btn" type="button">☆ Add to favorites</button>
+        </div>
+        <div class="section"><div class="label">Setup</div><p>One goal. Attacker and defender start beside the coach or on opposite cones.</p></div>
+        <div class="section"><div class="label">How to play</div><p>Coach serves the ball into space. Both players race to it and play live to goal.</p></div>
+        <div class="section"><div class="label">Coaching cues</div><p>Win the ball, get your first touch toward goal, and shoot when space opens.</p></div>
+        <div class="age-grid"><div class="age-note"><b>U6</b>Give the attacker a small head start if needed.</div><div class="age-note"><b>U7</b>Vary the service so players must react and transition quickly.</div></div>
+      </div>
+    </details>
+
+    <details class="drill" name="soccer-drills" data-tags="passing shooting vs 2v1 team decision-making u7" data-minutes="10">
+      <summary>
+        <div class="summary-main"><span class="summary-title">2v1 to Goal</span><span class="summary-meta"><span class="mini-tag">Passing</span><span class="mini-tag">2v1</span><span class="mini-tag">10 min</span></span></div><span class="fav-star-display" aria-hidden="true"></span><span class="chev">⌄</span>
+      </summary>
+      <div class="content">
+        <div class="drill-actions">
+          <button class="drill-action primary add-plan-btn" type="button">＋ Add to practice</button>
+          <button class="drill-action favorite-action-btn" type="button">☆ Add to favorites</button>
+        </div>
+        <div class="section"><div class="label">Setup</div><p>Two attackers start together against one defender, going to goal.</p></div>
+        <div class="section"><div class="label">How to play</div><p>Attackers can dribble or pass. Let the defender’s position create the decision.</p></div>
+        <div class="section"><div class="label">Coaching cues</div><p>“If the defender comes to you, who might be open?” Do not force the pass if the dribbler has space.</p></div>
+        <div class="age-grid"><div class="age-note"><b>U6</b>Optional. Use only if the group is ready.</div><div class="age-note"><b>U7</b>Great introduction to the dribble-or-pass decision.</div></div>
+      </div>
+    </details>
+
+    <details class="drill" name="soccer-drills" data-tags="passing shooting vs 2v2 team competitive transition u7" data-minutes="10">
+      <summary>
+        <div class="summary-main"><span class="summary-title">2v2 Wave</span><span class="summary-meta"><span class="mini-tag">2v2</span><span class="mini-tag">Transition</span><span class="mini-tag">10 min</span></span></div><span class="fav-star-display" aria-hidden="true"></span><span class="chev">⌄</span>
+      </summary>
+      <div class="content">
+        <div class="drill-actions">
+          <button class="drill-action primary add-plan-btn" type="button">＋ Add to practice</button>
+          <button class="drill-action favorite-action-btn" type="button">☆ Add to favorites</button>
+        </div>
+        <div class="section"><div class="label">Setup</div><p>Two goals facing each other. Two attackers play against two defenders.</p></div>
+        <div class="section"><div class="label">How to play</div><p>When a play ends, the defending pair leaves and two new players immediately attack the opposite direction.</p></div>
+        <div class="section"><div class="label">Coaching cues</div><p>React quickly when possession changes. Attack before the defense gets organized.</p></div>
+        <div class="age-grid"><div class="age-note"><b>U6</b>Can work with a strong group, but keep rules loose.</div><div class="age-note"><b>U7</b>Excellent for transition, support, and fast decisions.</div></div>
+      </div>
+    </details>
+
+    <details class="drill" name="soccer-drills" data-tags="passing dribbling vs 1v1 2v2 3v3 team competitive u6 u7 both" data-minutes="10">
+      <summary>
+        <div class="summary-main"><span class="summary-title">Numbers Game</span><span class="summary-meta"><span class="mini-tag">1v1–3v3</span><span class="mini-tag">Competitive</span><span class="mini-tag">10 min</span></span></div><span class="fav-star-display" aria-hidden="true"></span><span class="chev">⌄</span>
+      </summary>
+      <div class="content">
+        <div class="drill-actions">
+          <button class="drill-action primary add-plan-btn" type="button">＋ Add to practice</button>
+          <button class="drill-action favorite-action-btn" type="button">☆ Add to favorites</button>
+        </div>
+        <div class="section"><div class="label">Setup</div><p>Two teams beside the coach. Give players matching numbers or simply call how many players enter.</p></div>
+        <div class="section"><div class="label">How to play</div><p>Call “one” for 1v1, “two” for 2v2, or “three” for 3v3, then roll a ball in. Play until goal/out.</p></div>
+        <div class="section"><div class="label">Coaching cues</div><p>Attack quickly, defend immediately, and recognize when a teammate creates a passing option.</p></div>
+        <div class="age-grid"><div class="age-note"><b>U6</b>Mostly call 1 or 2.</div><div class="age-note"><b>U7</b>Mix 1v1, 2v2, and 3v3 frequently.</div></div>
+      </div>
+    </details>
+
+    <details class="drill" name="soccer-drills" data-tags="passing partner team low-setup u6 u7 both" data-minutes="9">
+      <summary>
+        <div class="summary-main"><span class="summary-title">Partner Passing Gates</span><span class="summary-meta"><span class="mini-tag">Passing</span><span class="mini-tag">Partner</span><span class="mini-tag">8–10 min</span></span></div><span class="fav-star-display" aria-hidden="true"></span><span class="chev">⌄</span>
+      </summary>
+      <div class="content">
+        <div class="drill-actions">
+          <button class="drill-action primary add-plan-btn" type="button">＋ Add to practice</button>
+          <button class="drill-action favorite-action-btn" type="button">☆ Add to favorites</button>
+        </div>
+        <div class="section"><div class="label">Setup</div><p>Scatter cone gates. Pairs share one ball.</p></div>
+        <div class="section"><div class="label">How to play</div><p>A pair scores when one player passes through a gate to the other. Try to score through five different gates.</p></div>
+        <div class="section"><div class="label">Coaching cues</div><p>Move after passing. Find a new gate instead of standing still. Pass with enough pace to reach your teammate.</p></div>
+        <div class="age-grid"><div class="age-note"><b>U6</b>Allow dribbling between passes and use wide gates.</div><div class="age-note"><b>U7</b>Encourage receiving across the body and moving immediately to the next gate.</div></div>
+      </div>
+    </details>
+
+    <details class="drill" name="soccer-drills" data-tags="shooting dribbling solo free-for-all ball-each u6 u7 both" data-minutes="8">
+      <summary>
+        <div class="summary-main"><span class="summary-title">Dribble & Shoot</span><span class="summary-meta"><span class="mini-tag">Shooting</span><span class="mini-tag">Solo</span><span class="mini-tag">8 min</span></span></div><span class="fav-star-display" aria-hidden="true"></span><span class="chev">⌄</span>
+      </summary>
+      <div class="content">
+        <div class="drill-actions">
+          <button class="drill-action primary add-plan-btn" type="button">＋ Add to practice</button>
+          <button class="drill-action favorite-action-btn" type="button">☆ Add to favorites</button>
+        </div>
+        <div class="section"><div class="label">Setup</div><p>Set up several small goals or cone goals around the area. Everyone has a ball.</p></div>
+        <div class="section"><div class="label">How to play</div><p>Players dribble freely and shoot into any open goal. After scoring, they must find a different goal.</p></div>
+        <div class="section"><div class="label">Coaching cues</div><p>Look up before shooting. Get the ball out of your feet before striking.</p></div>
+        <div class="age-grid"><div class="age-note"><b>U6</b>Keep goals close so success is frequent.</div><div class="age-note"><b>U7</b>Require a change of direction or weak-foot finish occasionally.</div></div>
+      </div>
+    </details>
+
+    <details class="drill" name="soccer-drills" data-tags="game scrimmage passing dribbling shooting team vs 3v3 4v4 u6 u7 both" data-minutes="18">
+      <summary>
+        <div class="summary-main"><span class="summary-title">3v3 / 4v4 Scrimmage</span><span class="summary-meta"><span class="mini-tag">Game</span><span class="mini-tag">Team</span><span class="mini-tag">15–20 min</span></span></div><span class="fav-star-display" aria-hidden="true"></span><span class="chev">⌄</span>
+      </summary>
+      <div class="content">
+        <div class="drill-actions">
+          <button class="drill-action primary add-plan-btn" type="button">＋ Add to practice</button>
+          <button class="drill-action favorite-action-btn" type="button">☆ Add to favorites</button>
+        </div>
+        <div class="section"><div class="label">Setup</div><p>Small field, two goals, ideally 3v3 or 4v4 so everyone stays involved.</p></div>
+        <div class="section"><div class="label">How to play</div><p>Mostly normal soccer. Keep coach stoppages rare and brief.</p></div>
+        <div class="section"><div class="label">Coaching cues</div><p>Use questions rather than lectures: “Where is the space?” “Can anyone help the player with the ball?” Then restart immediately.</p></div>
+        <div class="age-grid"><div class="age-note"><b>U6</b>Mostly let them play. Celebrate brave dribbling and defending.</div><div class="age-note"><b>U7</b>Occasionally highlight spacing, support, or a good pass without making passing mandatory.</div></div>
+      </div>
+    </details>
+
+    <details class="drill" name="soccer-drills" data-tags="finisher shooting team vs competitive low-setup u6 u7 both" data-minutes="5">
+      <summary>
+        <div class="summary-main"><span class="summary-title">Kids vs Coaches</span><span class="summary-meta"><span class="mini-tag">Finisher</span><span class="mini-tag">Fun</span><span class="mini-tag">3–5 min</span></span></div><span class="fav-star-display" aria-hidden="true"></span><span class="chev">⌄</span>
+      </summary>
+      <div class="content">
+        <div class="drill-actions">
+          <button class="drill-action primary add-plan-btn" type="button">＋ Add to practice</button>
+          <button class="drill-action favorite-action-btn" type="button">☆ Add to favorites</button>
+        </div>
+        <div class="section"><div class="label">Setup</div><p>Kids attack one goal against the coaches, or play a very short mini-game.</p></div>
+        <div class="section"><div class="label">How to play</div><p>Keep it playful and let the kids score. Use it as a high-energy ending rather than a teaching block.</p></div>
+        <div class="section"><div class="label">Variation</div><p>Penalty kicks, crossbar challenge, or “score before coach steals it.”</p></div>
+        <div class="age-grid"><div class="age-note"><b>U6</b>Maximum silliness.</div><div class="age-note"><b>U7</b>Still silly. They are six.</div></div>
+      </div>
+    </details>
+
+
+    <details class="drill" name="soccer-drills" data-tags="warmup dribbling solo ball-each low-setup u6 u7 both" data-minutes="8">
+      <summary>
+        <div class="summary-main"><span class="summary-title">Dribble Maze</span><span class="summary-meta"><span class="mini-tag">Warmup</span><span class="mini-tag">Dribbling</span><span class="mini-tag">8 min</span></span></div><span class="fav-star-display" aria-hidden="true"></span><span class="chev">⌄</span>
+      </summary>
+      <div class="content">
+        <div class="drill-actions">
+          <button class="drill-action primary add-plan-btn" type="button">＋ Add to practice</button>
+          <button class="drill-action favorite-action-btn" type="button">☆ Add to favorites</button>
+        </div>
+        <div class="section"><div class="label">Setup</div><p>Scatter cones randomly to create a “maze.” Every player has a ball.</p></div>
+        <div class="section"><div class="label">How to play</div><p>Players dribble through the maze without touching cones or other players. Call out turns, stops, or speed changes.</p></div>
+        <div class="section"><div class="label">Coaching cues</div><p>Small touches in traffic, bigger touches in space, and eyes up often enough to avoid collisions.</p></div>
+        <div class="age-grid"><div class="age-note"><b>U6</b>Just explore the maze and avoid obstacles.</div><div class="age-note"><b>U7</b>Add inside/outside-foot challenges and quick changes of direction.</div></div>
+      </div>
+    </details>
+
+    <details class="drill" name="soccer-drills" data-tags="warmup dribbling solo ball-each low-setup u6 u7 both" data-minutes="7">
+      <summary>
+        <div class="summary-main"><span class="summary-title">Body Parts</span><span class="summary-meta"><span class="mini-tag">Warmup</span><span class="mini-tag">Ball control</span><span class="mini-tag">7 min</span></span></div><span class="fav-star-display" aria-hidden="true"></span><span class="chev">⌄</span>
+      </summary>
+      <div class="content">
+        <div class="drill-actions">
+          <button class="drill-action primary add-plan-btn" type="button">＋ Add to practice</button>
+          <button class="drill-action favorite-action-btn" type="button">☆ Add to favorites</button>
+        </div>
+        <div class="section"><div class="label">Setup</div><p>Everyone dribbles freely with a ball in a grid.</p></div>
+        <div class="section"><div class="label">How to play</div><p>Coach calls a body part—foot, knee, elbow, head, bottom—and players stop the ball and touch that body part to it. Restart immediately.</p></div>
+        <div class="section"><div class="label">Why it works</div><p>It mixes movement, stopping the ball, listening, and silliness without creating lines.</p></div>
+        <div class="age-grid"><div class="age-note"><b>U6</b>Keep it fast and funny.</div><div class="age-note"><b>U7</b>Between calls, require a move such as pullback or outside-foot turn.</div></div>
+      </div>
+    </details>
+
+    <details class="drill" name="soccer-drills" data-tags="dribbling team competitive ball-each u6 u7 both" data-minutes="9">
+      <summary>
+        <div class="summary-main"><span class="summary-title">Hungry Hippos</span><span class="summary-meta"><span class="mini-tag">Dribbling</span><span class="mini-tag">Team</span><span class="mini-tag">9 min</span></span></div><span class="fav-star-display" aria-hidden="true"></span><span class="chev">⌄</span>
+      </summary>
+      <div class="content">
+        <div class="drill-actions">
+          <button class="drill-action primary add-plan-btn" type="button">＋ Add to practice</button>
+          <button class="drill-action favorite-action-btn" type="button">☆ Add to favorites</button>
+        </div>
+        <div class="section"><div class="label">Setup</div><p>Put many balls in the middle. Split players into 2–4 teams with a “home” cone or square.</p></div>
+        <div class="section"><div class="label">How to play</div><p>One player at a time from each team runs out, brings a ball home using their feet, then tags the next player. When the middle is empty, count the balls.</p></div>
+        <div class="section"><div class="label">Progression</div><p>Have every player go at once, or allow stealing from another team’s home in the final round.</p></div>
+        <div class="age-grid"><div class="age-note"><b>U6</b>One at a time makes the game easy to understand.</div><div class="age-note"><b>U7</b>All-at-once or stealing rounds add scanning and decisions.</div></div>
+      </div>
+    </details>
+
+    <details class="drill" name="soccer-drills" data-tags="dribbling vs free-for-all competitive ball-each u6 u7 both" data-minutes="9">
+      <summary>
+        <div class="summary-main"><span class="summary-title">Crocodile River</span><span class="summary-meta"><span class="mini-tag">Dribbling</span><span class="mini-tag">Vs</span><span class="mini-tag">9 min</span></span></div><span class="fav-star-display" aria-hidden="true"></span><span class="chev">⌄</span>
+      </summary>
+      <div class="content">
+        <div class="drill-actions">
+          <button class="drill-action primary add-plan-btn" type="button">＋ Add to practice</button>
+          <button class="drill-action favorite-action-btn" type="button">☆ Add to favorites</button>
+        </div>
+        <div class="section"><div class="label">Setup</div><p>Create a wide “river” with two cone lines. Players with balls start on one bank; 1–2 crocodiles begin inside.</p></div>
+        <div class="section"><div class="label">How to play</div><p>Players cross the river while keeping their ball. Crocodiles try to knock balls away. Anyone who loses a ball retrieves it and rejoins next round.</p></div>
+        <div class="section"><div class="label">Coaching cues</div><p>Look for a gap, change speed, and cut away from pressure rather than dribbling straight into it.</p></div>
+        <div class="age-grid"><div class="age-note"><b>U6</b>Make the river wide and keep only one crocodile initially.</div><div class="age-note"><b>U7</b>Add safe islands that players may use for only two seconds.</div></div>
+      </div>
+    </details>
+
+    <details class="drill" name="soccer-drills" data-tags="passing dribbling vs team 2v2 3v3 decision-making competitive u6 u7 both" data-minutes="12">
+      <summary>
+        <div class="summary-main"><span class="summary-title">Four-Goal Game</span><span class="summary-meta"><span class="mini-tag">2v2 / 3v3</span><span class="mini-tag">Decision making</span><span class="mini-tag">12 min</span></span></div><span class="fav-star-display" aria-hidden="true"></span><span class="chev">⌄</span>
+      </summary>
+      <div class="content">
+        <div class="drill-actions">
+          <button class="drill-action primary add-plan-btn" type="button">＋ Add to practice</button>
+          <button class="drill-action favorite-action-btn" type="button">☆ Add to favorites</button>
+        </div>
+        <div class="section"><div class="label">Setup</div><p>Small field with two cone goals on each end line, spaced apart. Play 2v2 or 3v3.</p></div>
+        <div class="section"><div class="label">How to play</div><p>Each team can score in either of the two goals it attacks. No goalkeepers.</p></div>
+        <div class="section"><div class="label">Coaching cues</div><p>If one goal is crowded, can you find the other? Encourage players to recognize and attack open space.</p></div>
+        <div class="age-grid"><div class="age-note"><b>U6</b>Use large goals and mostly let them discover the choice.</div><div class="age-note"><b>U7</b>Ask quick questions about switching direction and supporting the ball.</div></div>
+      </div>
+    </details>
+
+    <details class="drill" name="soccer-drills" data-tags="dribbling vs team 2v2 3v3 decision-making competitive u6 u7 both" data-minutes="10">
+      <summary>
+        <div class="summary-main"><span class="summary-title">End-Zone Dribble</span><span class="summary-meta"><span class="mini-tag">Small-sided</span><span class="mini-tag">Dribbling</span><span class="mini-tag">10 min</span></span></div><span class="fav-star-display" aria-hidden="true"></span><span class="chev">⌄</span>
+      </summary>
+      <div class="content">
+        <div class="drill-actions">
+          <button class="drill-action primary add-plan-btn" type="button">＋ Add to practice</button>
+          <button class="drill-action favorite-action-btn" type="button">☆ Add to favorites</button>
+        </div>
+        <div class="section"><div class="label">Setup</div><p>Mark an end zone across each end of a small field. Play 2v2 or 3v3.</p></div>
+        <div class="section"><div class="label">How to play</div><p>Score by dribbling the ball under control into the opponent’s end zone. No shooting from distance.</p></div>
+        <div class="section"><div class="label">Why it works</div><p>It rewards beating a defender, keeping the ball close near pressure, and finding open lanes.</p></div>
+        <div class="age-grid"><div class="age-note"><b>U6</b>Use wide end zones and 2v2.</div><div class="age-note"><b>U7</b>Play 3v3 and encourage support away from the ball.</div></div>
+      </div>
+    </details>
+
+    <details class="drill" name="soccer-drills" data-tags="dribbling shooting vs 1v1 2v2 competitive transition u6 u7 both" data-minutes="10">
+      <summary>
+        <div class="summary-main"><span class="summary-title">Get Outta Here!</span><span class="summary-meta"><span class="mini-tag">1v1 / 2v2</span><span class="mini-tag">Fast transitions</span><span class="mini-tag">10 min</span></span></div><span class="fav-star-display" aria-hidden="true"></span><span class="chev">⌄</span>
+      </summary>
+      <div class="content">
+        <div class="drill-actions">
+          <button class="drill-action primary add-plan-btn" type="button">＋ Add to practice</button>
+          <button class="drill-action favorite-action-btn" type="button">☆ Add to favorites</button>
+        </div>
+        <div class="section"><div class="label">Setup</div><p>Two teams stand beside the coach, with a small goal at each end. Coach has a supply of balls.</p></div>
+        <div class="section"><div class="label">How to play</div><p>Send in one or two players from each team and serve a ball. When the ball leaves or a goal is scored, shout “Get outta here!” and immediately send the next group.</p></div>
+        <div class="section"><div class="label">Coaching cues</div><p>React quickly, attack immediately when you win it, and recover toward your goal when you lose it.</p></div>
+        <div class="age-grid"><div class="age-note"><b>U6</b>Mostly 1v1 with occasional 2v2.</div><div class="age-note"><b>U7</b>Mix 1v1 and 2v2 so players constantly solve different problems.</div></div>
+      </div>
+    </details>
+
+    <details class="drill" name="soccer-drills" data-tags="shooting passing vs team competitive u6 u7 both" data-minutes="9">
+      <summary>
+        <div class="summary-main"><span class="summary-title">Knock Down the Castle</span><span class="summary-meta"><span class="mini-tag">Shooting</span><span class="mini-tag">Passing</span><span class="mini-tag">9 min</span></span></div><span class="fav-star-display" aria-hidden="true"></span><span class="chev">⌄</span>
+      </summary>
+      <div class="content">
+        <div class="drill-actions">
+          <button class="drill-action primary add-plan-btn" type="button">＋ Add to practice</button>
+          <button class="drill-action favorite-action-btn" type="button">☆ Add to favorites</button>
+        </div>
+        <div class="section"><div class="label">Setup</div><p>Build several “castles” from tall cones or stacked disc cones. Put players 6–10 yards away with balls.</p></div>
+        <div class="section"><div class="label">How to play</div><p>Players pass or shoot to knock down a castle, retrieve their ball, rebuild it, and attack another target.</p></div>
+        <div class="section"><div class="label">Coaching cues</div><p>Plant beside the ball and aim instead of just kicking hard.</p></div>
+        <div class="age-grid"><div class="age-note"><b>U6</b>Use big targets and short distances.</div><div class="age-note"><b>U7</b>Make targets smaller or turn it into a team race.</div></div>
+      </div>
+    </details>
+
+    <details class="drill" name="soccer-drills" data-tags="passing vs team 2v2 3v3 decision-making u7" data-minutes="10">
+      <summary>
+        <div class="summary-main"><span class="summary-title">Pass or Dribble Gates</span><span class="summary-meta"><span class="mini-tag">Passing</span><span class="mini-tag">Decision making</span><span class="mini-tag">10 min</span></span></div><span class="fav-star-display" aria-hidden="true"></span><span class="chev">⌄</span>
+      </summary>
+      <div class="content">
+        <div class="drill-actions">
+          <button class="drill-action primary add-plan-btn" type="button">＋ Add to practice</button>
+          <button class="drill-action favorite-action-btn" type="button">☆ Add to favorites</button>
+        </div>
+        <div class="section"><div class="label">Setup</div><p>Put several small gates inside a grid and play 2v2 or 3v3 with one ball.</p></div>
+        <div class="section"><div class="label">How to play</div><p>A team scores by either dribbling through a gate or completing a pass through a gate to a teammate. The same gate cannot score twice in a row.</p></div>
+        <div class="section"><div class="label">Coaching cues</div><p>Let the players choose: if space is open, dribble; if a teammate is open beyond pressure, pass.</p></div>
+        <div class="age-grid"><div class="age-note"><b>U6</b>Usually too complex; use regular Gates instead.</div><div class="age-note"><b>U7</b>Good bridge between individual dribbling and team play.</div></div>
+      </div>
+    </details>
+
+    <details class="drill" name="soccer-drills" data-tags="game scrimmage team vs 2v2 3v3 4v4 shooting dribbling passing u6 u7 both" data-minutes="12">
+      <summary>
+        <div class="summary-main"><span class="summary-title">Small-Sided World Cup</span><span class="summary-meta"><span class="mini-tag">Game</span><span class="mini-tag">2v2–4v4</span><span class="mini-tag">12 min</span></span></div><span class="fav-star-display" aria-hidden="true"></span><span class="chev">⌄</span>
+      </summary>
+      <div class="content">
+        <div class="drill-actions">
+          <button class="drill-action primary add-plan-btn" type="button">＋ Add to practice</button>
+          <button class="drill-action favorite-action-btn" type="button">☆ Add to favorites</button>
+        </div>
+        <div class="section"><div class="label">Setup</div><p>Create two or more tiny fields. Split into small teams and give each a fun country/team name.</p></div>
+        <div class="section"><div class="label">How to play</div><p>Play 2–3 minute games, then rotate opponents. Keep score optional; the goal is lots of short games and touches.</p></div>
+        <div class="section"><div class="label">Coaching cues</div><p>Keep rest short, substitutions minimal, and coaching mostly between rounds rather than during play.</p></div>
+        <div class="age-grid"><div class="age-note"><b>U6</b>2v2 or 3v3 works best.</div><div class="age-note"><b>U7</b>3v3 or 4v4 with quick rotations.</div></div>
+      </div>
+    </details>
+
+  </main>
+
+  <div id="empty" class="empty">No drills match those filters.</div>
+</div>
+
+
+<div class="filter-bar">
+  <div class="filter-inner">
+    <button class="bottom-action" type="button" popovertarget="filterPanel">
+      <span>Filters</span>
+    </button>
+    <button class="bottom-action" type="button" popovertarget="practicePanel">
+      <span>Practice</span><span id="practiceCount" class="count-badge">0</span>
+    </button>
+  </div>
+</div>
+
+<div id="filterPanel" class="filter-popover" popover>
+  <form id="filterForm">
+    <div class="sheet-handle"></div>
+    <div class="sheet-title">Filter drills</div>
+    <p class="filter-note">Select one or more tags. Multiple tags are matched together.</p>
+
+    <div class="tag-group">
+      <div class="tag-group-title">Age</div>
+      <div class="chips">
+        <label class="chip"><input id="f-favorites" type="checkbox">Favorites</label>
+        <label class="chip"><input id="f-u6" type="checkbox">U6</label>
+        <label class="chip"><input id="f-u7" type="checkbox">U7</label>
+      </div>
+    </div>
+
+    <div class="tag-group">
+      <div class="tag-group-title">Purpose</div>
+      <div class="chips">
+        <label class="chip"><input id="f-warmup" type="checkbox">Warmup</label>
+        <label class="chip"><input id="f-dribbling" type="checkbox">Dribbling</label>
+        <label class="chip"><input id="f-passing" type="checkbox">Passing</label>
+        <label class="chip"><input id="f-shooting" type="checkbox">Shooting</label>
+        <label class="chip"><input id="f-game" type="checkbox">Scrimmage</label>
+        <label class="chip"><input id="f-finisher" type="checkbox">Finisher</label>
+        <label class="chip"><input id="f-shielding" type="checkbox">Shielding</label>
+        <label class="chip"><input id="f-transition" type="checkbox">Transition</label>
+        <label class="chip"><input id="f-decision" type="checkbox">Decision making</label>
+      </div>
+    </div>
+
+    <div class="tag-group">
+      <div class="tag-group-title">Format</div>
+      <div class="chips">
+        <label class="chip"><input id="f-solo" type="checkbox">Solo</label>
+        <label class="chip"><input id="f-partner" type="checkbox">Partner</label>
+        <label class="chip"><input id="f-vs" type="checkbox">Vs</label>
+        <label class="chip"><input id="f-team" type="checkbox">Team</label>
+        <label class="chip"><input id="f-free" type="checkbox">Free for all</label>
+        <label class="chip"><input id="f-1v1" type="checkbox">1v1</label>
+        <label class="chip"><input id="f-2v1" type="checkbox">2v1</label>
+        <label class="chip"><input id="f-2v2" type="checkbox">2v2</label>
+        <label class="chip"><input id="f-3v3" type="checkbox">3v3</label>
+        <label class="chip"><input id="f-4v4" type="checkbox">4v4</label>
+      </div>
+    </div>
+
+    <div class="tag-group">
+      <div class="tag-group-title">Practical</div>
+      <div class="chips">
+        <label class="chip"><input id="f-ball-each" type="checkbox">Ball each</label>
+        <label class="chip"><input id="f-low-setup" type="checkbox">Low setup</label>
+        <label class="chip"><input id="f-competitive" type="checkbox">Competitive</label>
+      </div>
+    </div>
+
+    <div class="sheet-actions">
+      <button class="btn btn-clear" type="reset">Clear</button>
+      <button class="btn btn-ok" type="button" popovertarget="filterPanel" popovertargetaction="hide">OK</button>
+    </div>
+  </form>
+</div>
+
+
+<div id="practicePanel" class="builder-popover" popover>
+  <div class="builder-inner">
+    <div class="sheet-handle"></div>
+    <div class="builder-head">
+      <div>
+        <div class="sheet-title">Practice Builder</div>
+        <p class="builder-sub">Add 4–6 drills, then put them in the order you want. Your plan and favorites stay saved on this device.</p>
+      </div>
+    </div>
+    <div id="planList" class="plan-list"></div>
+    <div id="emptyPlan" class="empty-plan">No drills added yet. Open a drill and tap “Add to practice.”</div>
+    <div class="plan-summary"><span>Total planned time</span><span id="totalMinutes">0 min</span></div>
+    <div class="builder-actions">
+      <button id="clearPlan" class="btn btn-clear" type="button">Clear plan</button>
+      <button class="btn btn-ok" type="button" popovertarget="practicePanel" popovertargetaction="hide">Done</button>
+    </div>
+  </div>
+</div>
+
+
+
+<script>
+(() => {
+  const drills = [...document.querySelectorAll('.drill')];
+  const planList = document.getElementById('planList');
+  const emptyPlan = document.getElementById('emptyPlan');
+  const totalMinutes = document.getElementById('totalMinutes');
+  const practiceCount = document.getElementById('practiceCount');
+  const clearPlan = document.getElementById('clearPlan');
+
+  const titleOf = d => d.querySelector('.summary-title').textContent.trim();
+
+  const safeRead = (key, fallback) => {
+    try {
+      const raw = localStorage.getItem(key);
+      return raw ? JSON.parse(raw) : fallback;
+    } catch (_) {
+      return fallback;
+    }
+  };
+
+  const safeWrite = (key, value) => {
+    try { localStorage.setItem(key, JSON.stringify(value)); } catch (_) {}
+  };
+
+  let favorites = new Set(safeRead('soccerFavorites', []));
+  let plan = safeRead('soccerPracticePlan', []);
+  const validTitles = new Set(drills.map(titleOf));
+  plan = [...new Set(plan)].filter(t => validTitles.has(t));
+
+  function saveState() {
+    safeWrite('soccerFavorites', [...favorites]);
+    safeWrite('soccerPracticePlan', plan);
+  }
+
+  function refreshFavorites() {
+    drills.forEach(d => {
+      const title = titleOf(d);
+      const isFav = favorites.has(title);
+      d.dataset.favorite = isFav ? 'true' : 'false';
+
+      const star = d.querySelector('.fav-star-display');
+      if (star) star.textContent = isFav ? '★' : '';
+
+      const btn = d.querySelector('.favorite-action-btn');
+      if (btn) {
+        btn.textContent = isFav ? '★ Remove from favorites' : '☆ Add to favorites';
+        btn.classList.toggle('is-favorite', isFav);
+      }
+    });
+  }
+
+  function refreshPlanButtons() {
+    drills.forEach(d => {
+      const title = titleOf(d);
+      const added = plan.includes(title);
+      const btn = d.querySelector('.add-plan-btn');
+      if (!btn) return;
+      btn.textContent = added ? '✓ Remove from practice' : '＋ Add to practice';
+      btn.classList.toggle('added', added);
+    });
+  }
+
+  function renderPlan() {
+    if (!planList) return;
+    planList.innerHTML = '';
+    let total = 0;
+
+    plan.forEach((title, index) => {
+      const drill = drills.find(d => titleOf(d) === title);
+      if (!drill) return;
+
+      const mins = Number(drill.dataset.minutes || 0);
+      total += mins;
+
+      const row = document.createElement('div');
+      row.className = 'plan-row';
+
+      const left = document.createElement('div');
+      const name = document.createElement('div');
+      name.className = 'plan-name';
+      name.textContent = title;
+
+      const meta = document.createElement('div');
+      meta.className = 'plan-meta';
+      meta.textContent = `${mins} min`;
+
+      left.append(name, meta);
+
+      const controls = document.createElement('div');
+      controls.className = 'plan-controls';
+
+      const up = document.createElement('button');
+      up.type = 'button';
+      up.textContent = '↑';
+      up.disabled = index === 0;
+      up.addEventListener('click', () => {
+        if (index === 0) return;
+        [plan[index - 1], plan[index]] = [plan[index], plan[index - 1]];
+        saveState(); renderPlan(); refreshPlanButtons();
+      });
+
+      const down = document.createElement('button');
+      down.type = 'button';
+      down.textContent = '↓';
+      down.disabled = index === plan.length - 1;
+      down.addEventListener('click', () => {
+        if (index >= plan.length - 1) return;
+        [plan[index + 1], plan[index]] = [plan[index], plan[index + 1]];
+        saveState(); renderPlan(); refreshPlanButtons();
+      });
+
+      const remove = document.createElement('button');
+      remove.type = 'button';
+      remove.textContent = '×';
+      remove.addEventListener('click', () => {
+        plan = plan.filter(t => t !== title);
+        saveState(); renderPlan(); refreshPlanButtons();
+      });
+
+      controls.append(up, down, remove);
+      row.append(left, controls);
+      planList.appendChild(row);
+    });
+
+    if (emptyPlan) emptyPlan.style.display = plan.length ? 'none' : 'block';
+    if (totalMinutes) totalMinutes.textContent = `${total} min`;
+    if (practiceCount) practiceCount.textContent = String(plan.length);
+  }
+
+  drills.forEach(d => {
+    const favBtn = d.querySelector('.favorite-action-btn');
+    const planBtn = d.querySelector('.add-plan-btn');
+
+    if (favBtn) {
+      favBtn.addEventListener('click', e => {
+        e.preventDefault();
+        e.stopPropagation();
+        const title = titleOf(d);
+        favorites.has(title) ? favorites.delete(title) : favorites.add(title);
+        saveState();
+        refreshFavorites();
+      });
+    }
+
+    if (planBtn) {
+      planBtn.addEventListener('click', e => {
+        e.preventDefault();
+        e.stopPropagation();
+        const title = titleOf(d);
+        if (plan.includes(title)) plan = plan.filter(t => t !== title);
+        else plan.push(title);
+        saveState();
+        renderPlan();
+        refreshPlanButtons();
+      });
+    }
+  });
+
+  if (clearPlan) {
+    clearPlan.addEventListener('click', () => {
+      plan = [];
+      saveState();
+      renderPlan();
+      refreshPlanButtons();
+    });
+  }
+
+  refreshFavorites();
+  refreshPlanButtons();
+  renderPlan();
+  saveState();
+})();
+</script>
+
+</body>
+</html>
