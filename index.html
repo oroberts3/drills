@@ -505,6 +505,27 @@
   .run-controls-inner { width:min(732px,100%); margin:0 auto; display:grid; grid-template-columns:1fr 1fr 2fr 1fr; gap:8px; }
   .run-controls .btn { padding:0 6px; min-height:56px; font-size:17px; }
 
+  .diagram { margin:0 0 14px; }
+  .diagram svg { display:block; width:100%; height:auto; max-width:520px; }
+  .diagram-legend { display:flex; flex-wrap:wrap; gap:6px 14px; margin-top:6px; font-size:12px; font-weight:600; color:var(--muted); }
+  .diagram-legend span { display:inline-flex; align-items:center; gap:5px; }
+  .diagram-legend svg { width:22px; height:12px; }
+
+  .choice {
+    border:0;
+    border-radius:18px;
+    padding:18px 16px 14px;
+    width:min(360px, calc(100% - 32px));
+    box-shadow:0 12px 40px rgba(0,0,0,.25);
+    background:var(--card);
+    color:var(--text);
+  }
+  .choice::backdrop { background:rgba(0,0,0,.35); }
+  .choice h2 { font-size:19px; margin:0 0 4px; }
+  .choice p { margin:0 0 14px; color:var(--muted); font-size:14px; line-height:1.4; }
+  .choice .btn { width:100%; margin-top:8px; }
+  .choice .btn-danger { color:var(--warn); }
+
   @media (min-width:620px) {
     .age-grid { grid-template-columns:1fr 1fr; }
   }
@@ -644,8 +665,9 @@
     <div id="runClockNote" class="run-clock-note"></div>
     <div id="runNext" class="run-next"></div>
     <div id="runDetail" class="run-detail"></div>
-    <div class="row-actions" style="margin-top:14px">
-      <button id="runAddMin" class="btn btn-small" type="button">+1 min</button>
+    <div class="row-actions three" style="margin-top:14px">
+      <button id="runSubMin" class="btn btn-small" type="button" aria-label="One minute less">− 1 min</button>
+      <button id="runAddMin" class="btn btn-small" type="button" aria-label="One minute more">+ 1 min</button>
       <button id="runEnd" class="btn btn-small" type="button">End practice</button>
     </div>
   </div>
@@ -658,6 +680,16 @@
     </div>
   </div>
 </div>
+
+<dialog id="endDialog" class="choice">
+  <form method="dialog">
+    <h2 id="endTitle">End practice?</h2>
+    <p id="endText">Save it to history so templates and “Ran 5d ago” labels know you used these drills.</p>
+    <button class="btn btn-primary" value="save">Save to history</button>
+    <button class="btn btn-danger" value="discard">End without saving</button>
+    <button class="btn" value="cancel">Keep going</button>
+  </form>
+</dialog>
 
 <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
@@ -843,6 +875,75 @@
     });
   }
 
+  /* ---------- Setup diagrams ---------- */
+  const SVGNS = 'http://www.w3.org/2000/svg';
+  const DG = { cone: '#f28c28', coneEdge: '#c0620c', player: '#2563eb', pass: '#17191c', run: '#1d6f42', field: '#e4f2e7', line: '#a9d3b3' };
+  let dgSeq = 0;
+  const svgEl = (tag, attrs, parent) => {
+    const n = document.createElementNS(SVGNS, tag);
+    Object.entries(attrs).forEach(([k, v]) => n.setAttribute(k, v));
+    if (parent) parent.append(n);
+    return n;
+  };
+  const toward = (a, b, dist) => {
+    const dx = b[0] - a[0], dy = b[1] - a[1], len = Math.hypot(dx, dy) || 1;
+    return [a[0] + dx / len * dist, a[1] + dy / len * dist];
+  };
+  const cone = (g, x, y) => svgEl('path', { d: `M${x},${y - 6} L${x + 5.5},${y + 4} L${x - 5.5},${y + 4} Z`, fill: DG.cone, stroke: DG.coneEdge, 'stroke-width': 1, 'stroke-linejoin': 'round' }, g);
+
+  function diagramNode(dg) {
+    const W = dg.w || 320, H = dg.h || 200, id = 'dg' + (++dgSeq);
+    const svg = svgEl('svg', { viewBox: `0 0 ${W} ${H}`, role: 'img', 'aria-label': dg.alt || 'Setup diagram' });
+    const defs = svgEl('defs', {}, svg);
+    [['pass', DG.pass], ['run', DG.run]].forEach(([k, c]) => {
+      const m = svgEl('marker', { id: `${id}-${k}`, viewBox: '0 0 10 10', refX: 8, refY: 5, markerWidth: 6, markerHeight: 6, orient: 'auto-start-reverse' }, defs);
+      svgEl('path', { d: 'M0,0 L10,5 L0,10 z', fill: c }, m);
+    });
+    svgEl('rect', { x: 6, y: 6, width: W - 12, height: H - 12, rx: 10, fill: DG.field, stroke: DG.line, 'stroke-width': 2 }, svg);
+
+    const layers = { gate: svgEl('g', {}, svg), arrow: svgEl('g', {}, svg), player: svgEl('g', {}, svg), ball: svgEl('g', {}, svg) };
+    const used = new Set();
+    dg.items.forEach(it => {
+      used.add(it.t);
+      if (it.t === 'cone') cone(layers.gate, it.x, it.y);
+      else if (it.t === 'gate') {
+        const r = (it.a || 0) * Math.PI / 180, ox = -Math.sin(r) * 11, oy = Math.cos(r) * 11;
+        cone(layers.gate, it.x + ox, it.y + oy);
+        cone(layers.gate, it.x - ox, it.y - oy);
+      } else if (it.t === 'player') {
+        svgEl('circle', { cx: it.x, cy: it.y, r: 8, fill: it.color || DG.player, stroke: '#fff', 'stroke-width': 2 }, layers.player);
+      } else if (it.t === 'ball') {
+        const [x, y] = toward(it.from, it.to, 11);
+        svgEl('circle', { cx: x, cy: y, r: 3.8, fill: '#fff', stroke: '#17191c', 'stroke-width': 1.3 }, layers.ball);
+      } else if (it.t === 'pass') {
+        const a = toward(it.from, it.to, 16), b = toward(it.to, it.from, 11);
+        svgEl('line', { x1: a[0], y1: a[1], x2: b[0], y2: b[1], stroke: DG.pass, 'stroke-width': 1.8, 'stroke-dasharray': '5 4', 'marker-end': `url(#${id}-pass)` }, layers.arrow);
+      } else if (it.t === 'run') {
+        const a = toward(it.from, it.via, 11), b = toward(it.to, it.via, 4);
+        svgEl('path', { d: `M${a[0]},${a[1]} Q${it.via[0]},${it.via[1]} ${b[0]},${b[1]}`, fill: 'none', stroke: DG.run, 'stroke-width': 2, 'marker-end': `url(#${id}-run)` }, layers.arrow);
+      }
+    });
+
+    const wrap = el('div', 'diagram');
+    wrap.append(svg);
+    const legend = el('div', 'diagram-legend');
+    const key = (label, draw) => {
+      const s = svgEl('svg', { viewBox: '0 0 22 12', 'aria-hidden': 'true' });
+      draw(s);
+      const span = el('span');
+      span.append(s, label);
+      legend.append(span);
+    };
+    if (used.has('gate')) key('Cone gate', s => { cone(s, 6, 6); cone(s, 16, 6); });
+    else if (used.has('cone')) key('Cone', s => cone(s, 11, 6));
+    if (used.has('player')) key('Player', s => svgEl('circle', { cx: 11, cy: 6, r: 5, fill: DG.player }, s));
+    if (used.has('ball')) key('Ball', s => svgEl('circle', { cx: 11, cy: 6, r: 3.5, fill: '#fff', stroke: '#17191c', 'stroke-width': 1.2 }, s));
+    if (used.has('pass')) key('Pass', s => svgEl('line', { x1: 1, y1: 6, x2: 21, y2: 6, stroke: DG.pass, 'stroke-width': 1.8, 'stroke-dasharray': '4 3' }, s));
+    if (used.has('run')) key('Run', s => svgEl('line', { x1: 1, y1: 6, x2: 21, y2: 6, stroke: DG.run, 'stroke-width': 2 }, s));
+    wrap.append(legend);
+    return wrap;
+  }
+
   function detailNodes(d, age) {
     const out = d.sections.map(([label, body]) => {
       const s = el('div', 'section');
@@ -854,6 +955,11 @@
       } else s.append(el('p', null, body));
       return s;
     });
+    if (d.diagram) {
+      const s = el('div', 'section');
+      s.append(el('div', 'label', 'Diagram'), diagramNode(d.diagram));
+      out.splice(1, 0, s);
+    }
     const ages = Object.entries(d.ages).filter(([k]) => !age || k.toLowerCase() === age);
     if (ages.length) {
       const g = el('div', 'age-grid');
@@ -1390,18 +1496,31 @@
   $('runNextBtn').addEventListener('click', () => {
     unlockAudio();
     if (S.run.index < S.run.items.length - 1) gotoItem(1);
-    else if (confirm('Finish practice and save it to history?')) finishRun(true);
+    else askEnd(true);
   });
-  $('runAddMin').addEventListener('click', () => {
+  function changeRunMinutes(delta) {
     const r = S.run;
-    r.items[r.index].minutes += 1;
-    if (segElapsed(r) < r.items[r.index].minutes * 60000) r.alarmed = false;
-    save(); renderRun(true); toast('+1 minute');
-  });
-  $('runEnd').addEventListener('click', () => {
-    if (confirm('Save this practice to history?\n\nOK = save and end · Cancel = more options')) finishRun(true);
-    else if (confirm('End without saving?')) finishRun(false);
-  });
+    const it = r.items[r.index];
+    const next = Math.max(1, Math.min(60, it.minutes + delta));
+    if (next === it.minutes) return;
+    it.minutes = next;
+    // Re-arm the alarm when the new length leaves time on the clock.
+    r.alarmed = segElapsed(r) >= next * 60000 && r.alarmed;
+    save(); renderRun(false); toast(`${next} min planned`);
+  }
+  $('runSubMin').addEventListener('click', () => changeRunMinutes(-1));
+  $('runAddMin').addEventListener('click', () => changeRunMinutes(1));
+  function askEnd(finished) {
+    const dlg = $('endDialog');
+    $('endTitle').textContent = finished ? 'Practice complete! 🎉' : 'End practice?';
+    dlg.returnValue = 'cancel';
+    dlg.onclose = () => {
+      if (dlg.returnValue === 'save') finishRun(true);
+      else if (dlg.returnValue === 'discard') finishRun(false);
+    };
+    dlg.showModal();
+  }
+  $('runEnd').addEventListener('click', () => askEnd(false));
   document.addEventListener('visibilitychange', () => {
     if (document.visibilityState === 'visible' && !runEl.hidden) { keepAwake(true); renderRun(true); }
   });
