@@ -551,6 +551,16 @@
   .choice textarea:focus { border-color:#9ab8a7; }
   .choice textarea[readonly] { background:#f7f8fa; }
 
+  .players-pick { display:flex; align-items:center; gap:8px; }
+  .players-pick button {
+    width:40px; height:40px;
+    border:1px solid var(--line); background:#fff;
+    border-radius:10px; font-size:20px; font-weight:800;
+  }
+  .players-pick button:disabled { opacity:.4; }
+  .players-pick #plValue { min-width:86px; text-align:center; font-weight:800; font-size:16px; }
+  .players-hint { color:var(--muted); font-size:13px; font-weight:600; }
+
   .choice {
     border:0;
     border-radius:18px;
@@ -624,6 +634,15 @@
       </div>
     </div>
     <p class="sheet-note" id="matchNote"></p>
+    <div class="tag-group">
+      <div class="tag-group-title">Players at practice</div>
+      <div class="players-pick">
+        <button id="plMinus" type="button" aria-label="Fewer players">−</button>
+        <span id="plValue">Any</span>
+        <button id="plPlus" type="button" aria-label="More players">+</button>
+        <span id="plHint" class="players-hint"></span>
+      </div>
+    </div>
     <div id="filterGroups"></div>
     <div class="sheet-actions">
       <button id="clearFilters" class="btn" type="button">Clear</button>
@@ -860,6 +879,7 @@
       const ok = S.match === 'any' ? tagFilters.some(t => d.tags.includes(t)) : tagFilters.every(t => d.tags.includes(t));
       if (!ok) return false;
     }
+    if (!fitsPlayers(d, S.players)) return false;
     if (query) {
       const hay = haystack.get(d.id);
       if (!query.split(/\s+/).every(w => hay.includes(w))) return false;
@@ -867,7 +887,17 @@
     return true;
   }
 
+  const fitsPlayers = (d, n) => !n || !d.players || (n >= d.players[0] && (d.players[1] == null || n <= d.players[1]));
+  const playersLabel = d => d.players ? `👥 ${d.players[1] == null ? d.players[0] + '+' : d.players[0] + '–' + d.players[1]}` : '';
+  const PL_MAX = 20;
+  function setPlayers(n) {
+    S.players = n && n > 0 ? Math.min(PL_MAX, n) : null;
+    applyFilters();
+  }
+
   function buildFilterUI() {
+    $('plMinus').addEventListener('click', () => setPlayers(S.players ? S.players - 1 : null));
+    $('plPlus').addEventListener('click', () => setPlayers(S.players ? S.players + 1 : 8));
     const wrap = $('filterGroups');
     wrap.innerHTML = '';
     GROUPS.forEach(g => {
@@ -890,7 +920,7 @@
     $('matchToggle').querySelectorAll('button').forEach(b => b.addEventListener('click', () => {
       S.match = b.dataset.match; applyFilters();
     }));
-    $('clearFilters').addEventListener('click', () => { filters.clear(); applyFilters(); });
+    $('clearFilters').addEventListener('click', () => { filters.clear(); S.players = null; applyFilters(); });
   }
 
   /* ---------- Drill list ---------- */
@@ -910,6 +940,7 @@
       main.append(el('span', 'summary-title', d.title));
       const meta = el('span', 'summary-meta');
       d.meta.forEach(m => meta.append(el('span', 'mini-tag', m)));
+      if (d.players) meta.append(el('span', 'mini-tag', playersLabel(d)));
       const inPlan = el('span', 'mini-tag in-plan', '✓ In plan');
       const last = el('span', 'mini-tag last-run');
       meta.append(inPlan, last);
@@ -1141,6 +1172,12 @@
     pills.innerHTML = '';
     const tagCount = [...filters].filter(f => !RESTRICT.has(f)).length;
     if (tagCount > 1) pills.append(el('span', 'active-pill match', S.match === 'all' ? 'Match all' : 'Match any'));
+    if (S.players) {
+      const p = el('button', 'active-pill', `👥 ${S.players}${S.players >= PL_MAX ? '+' : ''} players ×`);
+      p.type = 'button';
+      p.addEventListener('click', () => setPlayers(null));
+      pills.append(p);
+    }
     filters.forEach(f => {
       const p = el('button', 'active-pill', LABEL.get(f) + ' ×');
       p.type = 'button';
@@ -1154,7 +1191,11 @@
       ? 'All: drills must have every tag you pick. Dribbling + Passing shows only drills with both.'
       : 'Any: drills with at least one of your tags. Dribbling + Passing shows drills with either.';
     $('matchNote').textContent += ' Choices under Show always narrow the list.';
-    $('filterCount').textContent = filters.size || '';
+    $('filterCount').textContent = (filters.size + (S.players ? 1 : 0)) || '';
+    $('plValue').textContent = S.players ? `${S.players}${S.players >= PL_MAX ? '+' : ''} player${S.players === 1 ? '' : 's'}` : 'Any';
+    $('plMinus').disabled = !S.players;
+    $('plPlus').disabled = S.players >= PL_MAX;
+    $('plHint').textContent = S.players ? 'Templates use this too' : 'Tap + to set';
     $('filterDone').textContent = `Show ${visible.length} drill${visible.length === 1 ? '' : 's'}`;
   }
 
@@ -1531,7 +1572,7 @@
     const reserved = (d, slot) => ['game', 'finisher'].some(r =>
       d.tags.includes(r) && !(slot.all || []).includes(r) && !(slot.any || []).includes(r));
     const fits = (d, slot, req, loose) =>
-      d.tags.includes(age) && !used.has(d.id) && (loose || !reserved(d, slot)) &&
+      d.tags.includes(age) && !used.has(d.id) && (loose || (!reserved(d, slot) && fitsPlayers(d, S.players))) &&
       (slot.all || []).every(x => d.tags.includes(x)) &&
       (!slot.any || slot.any.some(x => d.tags.includes(x))) &&
       !(slot.not || []).some(x => d.tags.includes(x)) &&
