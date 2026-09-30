@@ -777,7 +777,7 @@
 
 <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
-<script src="drills.js"></script>
+<script src="drills.js?v=6"></script>
 <script>
 (() => {
   const DRILLS = window.DRILLS || [];
@@ -1167,6 +1167,7 @@
     cards.forEach((c, id) => { c.det.hidden = !show.has(id); });
     $('empty').hidden = visible.length > 0;
     $('status').textContent = visible.length === DRILLS.length ? `${DRILLS.length} drills` : `${visible.length} of ${DRILLS.length} drills`;
+    if (S.players && visible.length === DRILLS.length) $('status').textContent += ` · all work with ${S.players} players`;
 
     const pills = $('activePills');
     pills.innerHTML = '';

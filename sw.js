@@ -1,5 +1,5 @@
 // Network-first so updates show up right away; cached copy is used when offline at the field.
-const CACHE = 'drill-deck-v1';
+const CACHE = 'drill-deck-v2';
 const FILES = ['./', 'index.html', 'drills.js', 'manifest.webmanifest', 'icon-180.png', 'icon-192.png', 'icon-512.png'];
 
 self.addEventListener('install', e => {
@@ -15,8 +15,10 @@ self.addEventListener('activate', e => {
 self.addEventListener('fetch', e => {
   const req = e.request;
   if (req.method !== 'GET' || new URL(req.url).origin !== location.origin) return;
+  // no-cache revalidates with GitHub Pages instead of reusing its 10-minute HTTP cache,
+  // so index.html and drills.js never come from different versions.
   e.respondWith(
-    fetch(req)
+    fetch(req.url, { cache: 'no-cache', credentials: 'same-origin' })
       .then(res => {
         const copy = res.clone();
         caches.open(CACHE).then(c => c.put(req, copy));
