@@ -1174,7 +1174,7 @@
     const tagCount = [...filters].filter(f => !RESTRICT.has(f)).length;
     if (tagCount > 1) pills.append(el('span', 'active-pill match', S.match === 'all' ? 'Match all' : 'Match any'));
     if (S.players) {
-      const p = el('button', 'active-pill', `👥 ${S.players}${S.players >= PL_MAX ? '+' : ''} players ×`);
+      const p = el('button', 'active-pill', `👥 ${S.players}${S.players >= PL_MAX ? '+' : ''} player${S.players === 1 ? '' : 's'} ×`);
       p.type = 'button';
       p.addEventListener('click', () => setPlayers(null));
       pills.append(p);
