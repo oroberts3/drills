@@ -382,6 +382,22 @@
   }
   .plan-row.is-break { background:#f3f8fc; border-color:#d6e5f0; }
   .plan-name { font-weight:800; font-size:15px; }
+  .plan-name-btn {
+    display:flex; align-items:center; gap:6px;
+    border:0; background:transparent; padding:2px 0; margin:0;
+    font-weight:800; font-size:15px; text-align:left;
+  }
+  .plan-name-btn .chev { width:20px; height:20px; font-size:12px; }
+  .plan-row.open .plan-name-btn .chev { transform:rotate(180deg); }
+  .plan-detail {
+    grid-column:1 / -1;
+    border-top:1px solid var(--line);
+    margin:4px -9px -9px -12px;
+    padding:12px;
+    background:#fafbfc;
+    border-radius:0 0 12px 12px;
+  }
+  .plan-detail .section:last-child { margin-bottom:0; }
   .plan-mins { display:flex; align-items:center; gap:6px; margin-top:5px; color:var(--muted); font-size:13px; font-weight:700; }
   .plan-mins button, .plan-controls button {
     width:32px; height:32px;
@@ -1310,15 +1326,39 @@
     $('totalMinutes').textContent = X && used ? `${fmt(used)} of ${total} min` : `${total} min`;
   }
 
+  const openPlanRows = new Set();
+  function moveItem(index, delta) {
+    const items = S.plan.items, it = items[index];
+    [items[index + delta], items[index]] = [items[index], items[index + delta]];
+    planChanged();
+    // Keep the moved drill in view so a long, expanded list doesn't jump away from it.
+    const row = $('planList').querySelector(`[data-key="${it.key}"]`);
+    if (row) row.scrollIntoView({ block: 'nearest' });
+  }
+
   function renderPlan() {
     const list = $('planList');
     list.innerHTML = '';
     planTimeEls.clear();
     const items = S.plan.items;
     items.forEach((it, index) => {
-      const row = el('div', 'plan-row' + (it.id === 'break' ? ' is-break' : ''));
+      const d = byId.get(it.id);
+      const isOpen = !!d && openPlanRows.has(it.key);
+      const row = el('div', 'plan-row' + (it.id === 'break' ? ' is-break' : '') + (isOpen ? ' open' : ''));
+      row.dataset.key = it.key;
       const left = el('div');
-      left.append(el('div', 'plan-name', itemName(it)), stepper(it, planChanged));
+      if (d) {
+        const name = el('button', 'plan-name-btn');
+        name.type = 'button';
+        name.setAttribute('aria-expanded', isOpen);
+        name.append(el('span', null, itemName(it)), el('span', 'chev', '⌄'));
+        name.addEventListener('click', () => {
+          openPlanRows.has(it.key) ? openPlanRows.delete(it.key) : openPlanRows.add(it.key);
+          renderPlan();
+        });
+        left.append(name);
+      } else left.append(el('div', 'plan-name', itemName(it)));
+      left.append(stepper(it, planChanged));
       const time = el('div', 'plan-time');
       left.append(time);
       planTimeEls.set(it.key, time);
@@ -1326,11 +1366,16 @@
       const controls = el('div', 'plan-controls');
       const mk = (txt, label, fn, dis) => { const b = el('button', null, txt); b.type = 'button'; b.setAttribute('aria-label', label); b.disabled = !!dis; b.addEventListener('click', fn); return b; };
       controls.append(
-        mk('↑', 'Move up', () => { [items[index - 1], items[index]] = [items[index], items[index - 1]]; planChanged(); }, index === 0),
-        mk('↓', 'Move down', () => { [items[index + 1], items[index]] = [items[index], items[index + 1]]; planChanged(); }, index === items.length - 1),
+        mk('↑', 'Move up', () => moveItem(index, -1), index === 0),
+        mk('↓', 'Move down', () => moveItem(index, 1), index === items.length - 1),
         mk('×', 'Remove', () => removeItem(it.key))
       );
       row.append(left, controls);
+      if (isOpen) {
+        const detail = el('div', 'plan-detail');
+        detail.append(...detailNodes(d, (S.plan.template && S.plan.template.age) || S.age));
+        row.append(detail);
+      }
       list.append(row);
     });
     const drillCount = items.filter(i => i.id !== 'break').length;
